@@ -82,6 +82,7 @@
 {"employer_id":"clearstream","method":"seed","sector":"asset_management"}
 {"employer_id":"clearstream","method":"seed","sector":"wealth_management"}
 {"employer_id":"corner-banca","method":"seed","sector":"banking"}
+{"employer_id":"credicorp-capital","method":"directory","sector":"investment_banking"}
 {"employer_id":"credit-agricole-bank-polska","method":"seed","sector":"banking"}
 {"employer_id":"crypto-finance","method":"seed","sector":"fintech"}
 {"employer_id":"csob","method":"seed","sector":"banking"}
@@ -149,6 +150,7 @@
 {"employer_id":"jefferies","method":"seed","sector":"banking"}
 {"employer_id":"jp-morgan","method":"seed","sector":"banking"}
 {"employer_id":"julius-baer","method":"seed","sector":"banking"}
+{"employer_id":"kallpa-securities-sab","method":"directory","sector":"sales_trading"}
 {"employer_id":"kbc","method":"seed","sector":"banking"}
 {"employer_id":"kepler-cheuvreux","method":"seed","sector":"banking"}
 {"employer_id":"klarna","method":"seed","sector":"fintech"}
@@ -177,6 +179,7 @@
 {"employer_id":"mbank","method":"seed","sector":"banking"}
 {"employer_id":"mediobanca","method":"seed","sector":"banking"}
 {"employer_id":"metzler","method":"seed","sector":"banking"}
+{"employer_id":"mibanco","method":"directory","sector":"banking"}
 {"employer_id":"migros-bank","method":"seed","sector":"banking"}
 {"employer_id":"mirabaud","method":"seed","sector":"banking"}
 {"employer_id":"mm-warburg","method":"seed","sector":"banking"}
@@ -207,6 +210,7 @@
 {"employer_id":"optiver","method":"seed","sector":"asset_management"}
 {"employer_id":"optiver","method":"seed","sector":"wealth_management"}
 {"employer_id":"ottonova","method":"seed","sector":"fintech"}
+{"employer_id":"pacifico-seguros","method":"directory","sector":"other_finance"}
 {"employer_id":"pai-partners","method":"seed","sector":"private_equity"}
 {"employer_id":"partners-group","method":"seed","sector":"private_equity"}
 {"employer_id":"payfit","method":"seed","sector":"fintech"}
@@ -235,6 +239,7 @@
 {"employer_id":"raisin","method":"seed","sector":"fintech"}
 {"employer_id":"responsability-investments","method":"seed","sector":"asset_management"}
 {"employer_id":"responsability-investments","method":"seed","sector":"wealth_management"}
+{"employer_id":"rimac-seguros","method":"directory","sector":"other_finance"}
 {"employer_id":"robeco","method":"seed","sector":"asset_management"}
 {"employer_id":"robeco","method":"seed","sector":"wealth_management"}
 {"employer_id":"rothschild","method":"seed","sector":"asset_management"}
@@ -244,6 +249,7 @@
 {"employer_id":"scalable-capital","method":"seed","sector":"fintech"}
 {"employer_id":"scalapay","method":"seed","sector":"fintech"}
 {"employer_id":"schwyzer-kantonalbank","method":"seed","sector":"banking"}
+{"employer_id":"scotiabank-peru","method":"directory","sector":"banking"}
 {"employer_id":"six-group","method":"seed","sector":"asset_management"}
 {"employer_id":"six-group","method":"seed","sector":"wealth_management"}
 {"employer_id":"smava","method":"seed","sector":"fintech"}
@@ -256,6 +262,7 @@
 {"employer_id":"stepstone-group","method":"seed","sector":"private_equity"}
 {"employer_id":"stripe","method":"seed","sector":"fintech"}
 {"employer_id":"sumup","method":"seed","sector":"fintech"}
+{"employer_id":"superintendencia-de-banca","method":"directory","sector":"other_finance"}
 {"employer_id":"swedbank","method":"seed","sector":"banking"}
 {"employer_id":"swile","method":"seed","sector":"fintech"}
 {"employer_id":"swiss-re","method":"seed","sector":"asset_management"}

@@ -68,6 +68,7 @@
 {"city":"","country":"FR","employer_id":"clairfield-international","method":"seed"}
 {"city":"","country":"LU","employer_id":"clearstream","method":"seed"}
 {"city":"","country":"CH","employer_id":"corner-banca","method":"seed"}
+{"city":"","country":"PE","employer_id":"credicorp-capital","method":"seed"}
 {"city":"","country":"PL","employer_id":"credit-agricole-bank-polska","method":"seed"}
 {"city":"","country":"CH","employer_id":"crypto-finance","method":"seed"}
 {"city":"","country":"CZ","employer_id":"csob","method":"seed"}
@@ -122,6 +123,7 @@
 {"city":"","country":"DE","employer_id":"jefferies","method":"seed"}
 {"city":"","country":"CH","employer_id":"jp-morgan","method":"seed"}
 {"city":"","country":"CH","employer_id":"julius-baer","method":"seed"}
+{"city":"","country":"PE","employer_id":"kallpa-securities-sab","method":"seed"}
 {"city":"","country":"BE","employer_id":"kbc","method":"seed"}
 {"city":"","country":"FR","employer_id":"kepler-cheuvreux","method":"seed"}
 {"city":"","country":"SE","employer_id":"klarna","method":"seed"}
@@ -145,6 +147,7 @@
 {"city":"","country":"PL","employer_id":"mbank","method":"seed"}
 {"city":"","country":"IT","employer_id":"mediobanca","method":"seed"}
 {"city":"","country":"DE","employer_id":"metzler","method":"seed"}
+{"city":"","country":"PE","employer_id":"mibanco","method":"seed"}
 {"city":"","country":"CH","employer_id":"migros-bank","method":"seed"}
 {"city":"","country":"CH","employer_id":"mirabaud","method":"seed"}
 {"city":"","country":"DE","employer_id":"mm-warburg","method":"seed"}
@@ -169,6 +172,7 @@
 {"city":"","country":"FR","employer_id":"oddo-bhf","method":"seed"}
 {"city":"","country":"NL","employer_id":"optiver","method":"seed"}
 {"city":"","country":"DE","employer_id":"ottonova","method":"seed"}
+{"city":"","country":"PE","employer_id":"pacifico-seguros","method":"seed"}
 {"city":"","country":"FR","employer_id":"pai-partners","method":"seed"}
 {"city":"","country":"CH","employer_id":"partners-group","method":"seed"}
 {"city":"","country":"FR","employer_id":"payfit","method":"seed"}
@@ -191,6 +195,7 @@
 {"city":"","country":"CH","employer_id":"raiffeisen-schweiz","method":"seed"}
 {"city":"","country":"DE","employer_id":"raisin","method":"seed"}
 {"city":"","country":"CH","employer_id":"responsability-investments","method":"seed"}
+{"city":"","country":"PE","employer_id":"rimac-seguros","method":"seed"}
 {"city":"","country":"NL","employer_id":"robeco","method":"seed"}
 {"city":"","country":"FR","employer_id":"rothschild","method":"seed"}
 {"city":"","country":"ES","employer_id":"santander","method":"seed"}
@@ -198,6 +203,7 @@
 {"city":"","country":"DE","employer_id":"scalable-capital","method":"seed"}
 {"city":"","country":"IT","employer_id":"scalapay","method":"seed"}
 {"city":"","country":"CH","employer_id":"schwyzer-kantonalbank","method":"seed"}
+{"city":"","country":"PE","employer_id":"scotiabank-peru","method":"seed"}
 {"city":"","country":"CH","employer_id":"six-group","method":"seed"}
 {"city":"","country":"DE","employer_id":"smava","method":"seed"}
 {"city":"","country":"FR","employer_id":"societe-generale","method":"seed"}
@@ -209,6 +215,7 @@
 {"city":"","country":"CH","employer_id":"stepstone-group","method":"seed"}
 {"city":"","country":"IE","employer_id":"stripe","method":"seed"}
 {"city":"","country":"DE","employer_id":"sumup","method":"seed"}
+{"city":"","country":"PE","employer_id":"superintendencia-de-banca","method":"seed"}
 {"city":"","country":"SE","employer_id":"swedbank","method":"seed"}
 {"city":"","country":"FR","employer_id":"swile","method":"seed"}
 {"city":"","country":"CH","employer_id":"swiss-re","method":"seed"}

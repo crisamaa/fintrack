@@ -72,6 +72,7 @@
 {"alias":"Clairfield International","alias_key":"clairfieldinternational","employer_id":"clairfield-international","source":"seed"}
 {"alias":"Clearstream","alias_key":"clearstream","employer_id":"clearstream","source":"seed"}
 {"alias":"Corner Banca","alias_key":"corner","employer_id":"corner-banca","source":"seed"}
+{"alias":"Credicorp Capital","alias_key":"credicorpcapital","employer_id":"credicorp-capital","source":"seed"}
 {"alias":"Crédit Agricole Bank Polska","alias_key":"creditagricolepolska","employer_id":"credit-agricole-bank-polska","source":"seed"}
 {"alias":"Crypto Finance","alias_key":"cryptofinance","employer_id":"crypto-finance","source":"seed"}
 {"alias":"CSOB","alias_key":"csob","employer_id":"csob","source":"seed"}
@@ -130,6 +131,7 @@
 {"alias":"J.P. Morgan","alias_key":"jpmorgan","employer_id":"jp-morgan","source":"seed"}
 {"alias":"Julius Baer","alias_key":"juliusbaer","employer_id":"julius-baer","source":"seed"}
 {"alias":"Jyske","alias_key":"jyske","employer_id":"jyske","source":"seed"}
+{"alias":"Kallpa Securities SAB","alias_key":"kallpasecurities","employer_id":"kallpa-securities-sab","source":"seed"}
 {"alias":"KBC","alias_key":"kbc","employer_id":"kbc","source":"seed"}
 {"alias":"Kepler Cheuvreux","alias_key":"keplercheuvreux","employer_id":"kepler-cheuvreux","source":"seed"}
 {"alias":"Klarna","alias_key":"klarna","employer_id":"klarna","source":"seed"}
@@ -153,6 +155,7 @@
 {"alias":"mBank","alias_key":"mbank","employer_id":"mbank","source":"seed"}
 {"alias":"Mediobanca","alias_key":"mediobanca","employer_id":"mediobanca","source":"seed"}
 {"alias":"Metzler","alias_key":"metzler","employer_id":"metzler","source":"seed"}
+{"alias":"Mibanco","alias_key":"mibanco","employer_id":"mibanco","source":"seed"}
 {"alias":"Migros Bank","alias_key":"migros","employer_id":"migros-bank","source":"seed"}
 {"alias":"Mirabaud","alias_key":"mirabaud","employer_id":"mirabaud","source":"seed"}
 {"alias":"M.M.Warburg","alias_key":"mmwarburg","employer_id":"mm-warburg","source":"seed"}
@@ -178,6 +181,7 @@
 {"alias":"Oddo BHF","alias_key":"oddobhf","employer_id":"oddo-bhf","source":"seed"}
 {"alias":"Optiver","alias_key":"optiver","employer_id":"optiver","source":"seed"}
 {"alias":"Ottonova","alias_key":"ottonova","employer_id":"ottonova","source":"seed"}
+{"alias":"Pacífico Seguros","alias_key":"pacificoseguros","employer_id":"pacifico-seguros","source":"seed"}
 {"alias":"PAI Partners","alias_key":"paipartners","employer_id":"pai-partners","source":"seed"}
 {"alias":"Partners Group","alias_key":"partners","employer_id":"partners-group","source":"seed"}
 {"alias":"Payfit","alias_key":"payfit","employer_id":"payfit","source":"seed"}
@@ -202,6 +206,7 @@
 {"alias":"Raisin","alias_key":"raisin","employer_id":"raisin","source":"seed"}
 {"alias":"responsAbility Investments","alias_key":"responsabilityinvestments","employer_id":"responsability-investments","source":"seed"}
 {"alias":"Revolut","alias_key":"revolut","employer_id":"revolut","source":"seed"}
+{"alias":"Rímac Seguros","alias_key":"rimacseguros","employer_id":"rimac-seguros","source":"seed"}
 {"alias":"Robeco","alias_key":"robeco","employer_id":"robeco","source":"seed"}
 {"alias":"Rothschild & Co","alias_key":"rothschild","employer_id":"rothschild","source":"seed"}
 {"alias":"Santander","alias_key":"santander","employer_id":"santander","source":"seed"}
@@ -209,6 +214,7 @@
 {"alias":"Scalable Capital","alias_key":"scalablecapital","employer_id":"scalable-capital","source":"seed"}
 {"alias":"Scalapay","alias_key":"scalapay","employer_id":"scalapay","source":"seed"}
 {"alias":"Schwyzer Kantonalbank","alias_key":"schwyzerkantonalbank","employer_id":"schwyzer-kantonalbank","source":"seed"}
+{"alias":"Scotiabank Perú","alias_key":"scotiabank","employer_id":"scotiabank-peru","source":"seed"}
 {"alias":"SIX Group","alias_key":"six","employer_id":"six-group","source":"seed"}
 {"alias":"Smava","alias_key":"smava","employer_id":"smava","source":"seed"}
 {"alias":"Société Générale","alias_key":"generale","employer_id":"societe-generale","source":"seed"}
@@ -220,6 +226,7 @@
 {"alias":"StepStone Group","alias_key":"stepstone","employer_id":"stepstone-group","source":"seed"}
 {"alias":"Stripe","alias_key":"stripe","employer_id":"stripe","source":"seed"}
 {"alias":"SumUp","alias_key":"sumup","employer_id":"sumup","source":"seed"}
+{"alias":"Superintendencia de Banca","alias_key":"superintendencia","employer_id":"superintendencia-de-banca","source":"seed"}
 {"alias":"Swedbank","alias_key":"swedbank","employer_id":"swedbank","source":"seed"}
 {"alias":"Swile","alias_key":"swile","employer_id":"swile","source":"seed"}
 {"alias":"Swiss Re","alias_key":"swissre","employer_id":"swiss-re","source":"seed"}
