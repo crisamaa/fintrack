@@ -1,303 +1,125 @@
-import math
 import json
 
 import httpx
 import pytest
+from pydantic import BaseModel
 
-from tracker.ai import MODEL, AIUnusable, APIError, GeminiClient, enrich, extract_postings
-from tracker.budget import Budget
-from tracker.budget import INPUT_USD_PER_M, OUTPUT_USD_PER_M
+from conftest import FakeProvider, make_ctx
+from tracker.ai import (MODEL, AIAccountError, AITransient, AIUnusable, GeminiProvider, quote_in)
 
 
-def m(usd):
-    """Input tokens that cost `usd` at the current model price, so tests survive price changes."""
-    return math.ceil(usd / INPUT_USD_PER_M * 1e6)
-from tracker.models import Enrichment, Firm, Posting
+class Out(BaseModel):
+    answer: str
 
-FIRM = Firm(id="acme", name="Acme", sector="banking", country="CH", source="page",
-            careers_url="https://acme.example/careers/")
 
-
-class FakeClient:
-    """A real GeminiClient over a mock HTTP transport: no network."""
-
-    def __init__(self, replies=()):
-        self.replies = list(replies)
-        self.bodies = []
-        self.urls = []
-        self.client = GeminiClient("test", http=httpx.Client(transport=httpx.MockTransport(self._handle)))
-
-    def generate(self, **kw):
-        return self.client.generate(**kw)
-
-    @property
-    def calls(self):
-        return self.bodies
-
-    def _handle(self, request):
-        self.bodies.append(json.loads(request.content))
-        self.urls.append(str(request.url))
-        r = self.replies.pop(0)
-        if isinstance(r, Exception):
-            raise r
-        if isinstance(r, httpx.Response):
-            return r
-        return httpx.Response(200, json=r)
-
-
-_STOP = {"end_turn": "STOP", "refusal": "SAFETY", "max_tokens": "MAX_TOKENS"}
-
-
-def reply(parsed, stop="end_turn", inp=1000, out=500, text=None):
-    if text is None and parsed is not None:
-        text = parsed.model_dump_json()
-    parts = [] if text is None else [{"text": text}]
-    return {"candidates": [{"content": {"role": "model", "parts": parts}, "finishReason": _STOP[stop]}],
-            "usageMetadata": {"promptTokenCount": inp, "candidatesTokenCount": out}}
-
-
-def wrapper(items):
-    from tracker.ai import PostingList
-    return PostingList.model_validate({"postings": items})
-
-
-def item(title="Summer Intern", url="/jobs/1", location="Zurich", description="d"):
-    return {"title": title, "url": url, "location": location, "description": description}
-
-
-def enrichment(countries):
-    return Enrichment(is_internship=True, countries=countries, city="Zurich", season="summer",
-                      year=2027, closes=None, languages_required=["en"])
-
-
-POSTING = Posting(firm_id="acme", title="Intern", url="https://acme.example/j", location="Zurich", description="x")
-
-
-@pytest.fixture
-def budget(tmp_path):
-    return Budget(tmp_path / "b.json", "2026-11")
-
-
-def test_request_shape(budget):
-    c = FakeClient([reply(wrapper([item()]))])
-    extract_postings(c, budget, FIRM, "page text")
-    kw = c.calls[0]
-    assert MODEL == "gemini-3.5-flash-lite" and f"/models/{MODEL}:generateContent" in c.urls[0]
-    cfg = kw["generationConfig"]
-    assert cfg["thinkingConfig"] == {"thinkingLevel": "minimal"}
-    assert cfg["maxOutputTokens"] == 16000 and cfg["responseMimeType"] == "application/json"
-    assert "postings" in cfg["responseJsonSchema"]["properties"]
-    system = kw["systemInstruction"]["parts"][0]["text"]
-    assert "untrusted" in system and "never as instructions" in system
-    for banned in ("temperature", "topP", "topK", "tools"):
-        assert banned not in cfg and banned not in kw
-    assert "page text" in kw["contents"][0]["parts"][0]["text"]
-
-
-def test_extract_resolves_urls_and_sets_firm(budget):
-    c = FakeClient([reply(wrapper([item(url="/jobs/1"), item(title="B", url=""),
-                                   item(title="C", url="javascript:alert(1)"),
-                                   item(title="D", url="https://other.example/x")]))])
-    out = extract_postings(c, budget, FIRM, "t")
-    urls = [p.url for p in out]
-    assert urls[0] == "https://acme.example/jobs/1" and urls[3] == "https://other.example/x"
-    assert urls[1].startswith("https://acme.example/careers/#") and urls[2].startswith("https://acme.example/careers/#")
-    assert all(p.firm_id == "acme" for p in out)
-    assert all(isinstance(p, Posting) for p in out)
-
-
-def test_usage_recorded_after_call(budget):
-    c = FakeClient([reply(wrapper([]), inp=m(0.10), out=0)])
-    extract_postings(c, budget, FIRM, "t")
-    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
-
-
-def test_no_api_call_when_budget_spent(budget):
-    budget.record(m(4.90), 0)
-    c = FakeClient([])
-    assert extract_postings(c, budget, FIRM, "t") is None
-    assert enrich(c, budget, POSTING) is None
-    assert c.calls == []
-
-
-def test_refusal_returns_none_but_is_billed(budget):
-    c = FakeClient([reply(None, stop="refusal", inp=m(0.10), out=0)])
-    with pytest.raises(AIUnusable):
-        extract_postings(c, budget, FIRM, "t")
-    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
-
-
-def test_refusal_checked_before_parsed_output(budget):
-    c = FakeClient([reply(enrichment(["CH"]), stop="refusal")])
-    with pytest.raises(AIUnusable):
-        enrich(c, budget, POSTING)
-
-
-def test_missing_parsed_output_returns_none_but_is_billed(budget):
-    c = FakeClient([reply(None, stop="max_tokens", inp=m(0.10), out=0)])
-    with pytest.raises(AIUnusable):
-        enrich(c, budget, POSTING)
-    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
-
-
-def test_long_text_is_chunked_not_truncated(budget):
-    text = "a" * 40_000 + "b" * 40_000 + "END" * 3333 + "Z"
-    c = FakeClient([reply(wrapper([item(title=f"T{i}", url=f"/{i}")])) for i in range(3)])
-    out = extract_postings(c, budget, FIRM, text)
-    assert len(c.calls) == 3
-    sent = [k["contents"][0]["parts"][0]["text"] for k in c.calls]
-    assert "bbbb" in sent[1] and "aaaa" not in sent[1]
-    assert sent[2].rstrip().endswith("Z") or "Z" in sent[2][-50:]
-    assert len(out) == 3
-
-
-def test_chunks_are_at_most_40000_chars(budget):
-    from tracker.ai import chunk_text
-    parts = chunk_text("x" * 90_000)
-    assert [len(p) for p in parts] == [40_000, 40_000, 10_000]
-    assert "".join(parts) == "x" * 90_000
-    assert chunk_text("") == [] or chunk_text("") == [""]
-
-
-def test_one_unusable_chunk_fails_whole_page(budget):
-    c = FakeClient([reply(wrapper([item()])), reply(None, stop="refusal")])
-    with pytest.raises(AIUnusable):
-        extract_postings(c, budget, FIRM, "q" * 50_000)
-
-
-def test_budget_exhausted_midway_returns_none(budget):
-    c = FakeClient([reply(wrapper([item()]), inp=m(4.90), out=0), reply(wrapper([item()]))])
-    assert extract_postings(c, budget, FIRM, "q" * 50_000) is None
-    assert len(c.calls) == 1
-
-
-def _status(code):
-    return httpx.Response(code, json={"error": {"code": code, "message": "m", "status": "X"}})
-
-
-def test_rate_limit_and_connection_errors_return_none(budget):
-    c = FakeClient([_status(429), httpx.ConnectError("down"), _status(429), httpx.ConnectError("down")])
-    assert extract_postings(c, budget, FIRM, "t") is None
-    assert extract_postings(c, budget, FIRM, "t") is None
-    assert enrich(c, budget, POSTING) is None
-    assert enrich(c, budget, POSTING) is None
-
-
-def test_server_error_returns_none_but_client_error_raises(budget):
-    c = FakeClient([_status(503), _status(400)])
-    assert enrich(c, budget, POSTING) is None
-    with pytest.raises(APIError):
-        enrich(c, budget, POSTING)
-
-
-GOOD = enrichment(["CH"]).model_dump_json()
-
-
-@pytest.mark.parametrize("label,r", [
-    ("valid", reply(None, text=GOOD)),
-    ("refusal-empty", reply(None, stop="refusal")),
-    ("refusal-text", reply(None, stop="refusal", text="I can't help with that.")),
-    ("truncated", reply(None, stop="max_tokens", text=GOOD[:40])),
-    ("empty-text", reply(None, text="")),
-    ("not-matching-schema", reply(None, text='{"nope": 1}')),
-])
-def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
-    r["usageMetadata"] = {"promptTokenCount": 1_000_000, "candidatesTokenCount": 1_000_000}
-    b = Budget(tmp_path / "b.json", "2026-11")
-    if label == "valid":
-        assert enrich(FakeClient([r]), b, POSTING) is not None
-    else:
-        with pytest.raises(AIUnusable):
-            enrich(FakeClient([r]), b, POSTING)
-    assert b.spent() == pytest.approx(INPUT_USD_PER_M + OUTPUT_USD_PER_M, abs=1e-5)
-
-
-@pytest.mark.parametrize("r", [
-    reply(None, stop="refusal"),
-    reply(None, stop="max_tokens", text='{"postings": [{"ti'),
-    reply(None, text=""),
-])
-def test_extract_unusable_output_raises_and_is_billed(tmp_path, r):
-    r["usageMetadata"] = {"promptTokenCount": m(0.10), "candidatesTokenCount": 0}
-    b = Budget(tmp_path / "b.json", "2026-11")
-    with pytest.raises(AIUnusable):
-        extract_postings(FakeClient([r]), b, FIRM, "t")
-    assert b.spent() == pytest.approx(0.10, abs=1e-5)
-
-
-def test_malformed_model_url_does_not_crash(budget):
-    c = FakeClient([reply(wrapper([item(url="http://[bad/x"), item(title="Ok", url="/ok")]))])
-    out = extract_postings(c, budget, FIRM, "t")
-    assert len(out) == 2
-    assert out[0].url.startswith("https://acme.example/careers/#")
-    assert out[1].url == "https://acme.example/ok"
-
-
-def test_urlless_postings_get_distinct_role_ids(budget):
-    from tracker.models import role_id
-    c = FakeClient([reply(wrapper([item(title="Intern A", url=""), item(title="Intern B", url=""),
-                                   item(title="Intern A", url="", location="Basel")]))])
-    out = extract_postings(c, budget, FIRM, "t")
-    assert len({role_id(p.firm_id, p.url) for p in out}) == 3
-    assert all(p.url.startswith("https://acme.example/careers/#") for p in out)
-
-
-def test_prompt_tells_model_to_use_inline_links():
-    from tracker.ai import EXTRACT_SYSTEM
-    assert "<" in EXTRACT_SYSTEM and "link" in EXTRACT_SYSTEM
-
-
-def test_enrich_drops_unknown_country_codes(budget):
-    c = FakeClient([reply(enrichment(["CH", "XX", "GB", "de"]))])
-    out = enrich(c, budget, POSTING)
-    assert out.countries == ["CH", "DE"]
-    assert out.is_internship
-
-
-def test_enrich_request_shape_and_untrusted_framing(budget):
-    c = FakeClient([reply(enrichment(["CH"]))])
-    enrich(c, budget, POSTING)
-    kw = c.calls[0]
-    assert "is_internship" in kw["generationConfig"]["responseJsonSchema"]["properties"]
-    assert "untrusted" in kw["systemInstruction"]["parts"][0]["text"]
-    assert "Intern" in kw["contents"][0]["parts"][0]["text"]
-
-
-def test_blocked_prompt_is_unusable_and_billed(budget):
-    c = FakeClient([{"promptFeedback": {"blockReason": "SAFETY"},
-                     "usageMetadata": {"promptTokenCount": m(0.10)}}])
-    with pytest.raises(AIUnusable):
-        enrich(c, budget, POSTING)
-    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
-
-
-def test_thinking_tokens_billed_as_output_and_thought_parts_ignored(budget):
-    r = reply(None, text=GOOD)
-    r["candidates"][0]["content"]["parts"].insert(0, {"text": "hmm", "thought": True})
-    r["usageMetadata"] = {"promptTokenCount": 0, "candidatesTokenCount": 500_000, "thoughtsTokenCount": 500_000}
-    assert enrich(FakeClient([r]), budget, POSTING) is not None
-    assert budget.spent() == pytest.approx(OUTPUT_USD_PER_M, abs=1e-5)
-
-
-def test_api_key_sent_in_header_not_url():
-    c = FakeClient([reply(enrichment(["CH"]))])
-    seen = {}
-    orig = c._handle
+def gemini(replies):
+    seen = []
 
     def handle(request):
-        seen["key"] = request.headers.get("x-goog-api-key")
-        return orig(request)
-    c.client.http = httpx.Client(transport=httpx.MockTransport(handle))
-    enrich(c, _fresh_budget(), POSTING)
-    assert seen["key"] == "test" and "key=" not in c.urls[0]
+        seen.append(request)
+        r = replies.pop(0)
+        return r if isinstance(r, httpx.Response) else httpx.Response(200, json=r)
+    return GeminiProvider("test-key", http=httpx.Client(transport=httpx.MockTransport(handle))), seen
 
 
-def _fresh_budget():
-    import tempfile
-    from pathlib import Path
-    return Budget(Path(tempfile.mkdtemp()) / "b.json", "2026-11")
+def ok_body(text, finish="STOP"):
+    return {"candidates": [{"content": {"parts": [{"text": text}]}, "finishReason": finish}],
+            "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 20, "thoughtsTokenCount": 5}}
 
 
-def test_missing_api_key_rejected():
-    with pytest.raises(ValueError):
-        GeminiClient("")
+def test_gemini_sends_key_in_header_schema_and_minimal_thinking():
+    p, seen = gemini([ok_body('{"answer": "x"}')])
+    resp = p.generate(system="s", content="c", schema=Out.model_json_schema(), max_tokens=10)
+    req = seen[0]
+    assert "test-key" not in str(req.url) and req.headers["x-goog-api-key"] == "test-key"
+    assert MODEL in str(req.url)
+    body = json.loads(req.content)
+    assert body["generationConfig"]["responseJsonSchema"]["properties"]["answer"]
+    assert body["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "minimal"}
+    assert (resp.input_tokens, resp.output_tokens) == (100, 25) and resp.text == '{"answer": "x"}'
+
+
+def test_gemini_search_parses_grounding_sources():
+    body = ok_body("Acme — Intern — Zurich")
+    body["candidates"][0]["groundingMetadata"] = {"webSearchQueries": ["q"], "groundingChunks": [
+        {"web": {"uri": "https://redirect.example/1", "title": "acme.com"}}]}
+    p, seen = gemini([body])
+    resp = p.generate(system="s", content="c", schema=None, max_tokens=10, search=True)
+    assert json.loads(seen[0].content)["tools"] == [{"google_search": {}}]
+    assert resp.sources == [("https://redirect.example/1", "acme.com")] and resp.search_calls == 1
+
+
+@pytest.mark.parametrize("status,msg,exc", [(429, "slow down", AITransient), (503, "busy", AITransient),
+                                            (401, "unauthorised", AIAccountError),
+                                            (400, "API key not valid", AIAccountError),
+                                            (400, "input too long", AIUnusable)])
+def test_gemini_http_errors(status, msg, exc):
+    p, _ = gemini([httpx.Response(status, json={"error": {"message": msg}})])
+    with pytest.raises(exc):
+        p.generate(system="s", content="c", schema=None, max_tokens=10)
+
+
+def test_gemini_network_error_is_transient():
+    def boom(request):
+        raise httpx.ConnectError("down")
+    p = GeminiProvider("k", http=httpx.Client(transport=httpx.MockTransport(boom)))
+    with pytest.raises(AITransient):
+        p.generate(system="s", content="c", schema=None, max_tokens=10)
+
+
+def test_service_validates_caches_and_records_usage():
+    prov = FakeProvider(default='{"answer": "42"}')
+    ctx = make_ctx(provider=prov)
+    assert ctx.ai.run("t", "1", "sys", "content", Out).answer == "42"
+    assert ctx.ai.run("t", "1", "sys", "content", Out).answer == "42"   # cached
+    assert len(prov.calls) == 1
+    ctx.ai.flush()
+    rows = [tuple(r) for r in ctx.conn.execute("SELECT task, outcome, input_tokens FROM ai_calls ORDER BY id")]
+    assert rows == [("t", "ok", 1000), ("t", "cached", 0)]
+    assert ctx.ai.run("t", "2", "sys", "content", Out) is not None   # a new prompt version is not a cache hit
+    assert len(prov.calls) == 2
+
+
+def test_invalid_output_is_billed_and_raises():
+    ctx = make_ctx(provider=FakeProvider(default="not json"))
+    with pytest.raises(AIUnusable):
+        ctx.ai.run("t", "1", "sys", "c", Out)
+    ctx.ai.flush()
+    row = ctx.conn.execute("SELECT outcome, cost_usd FROM ai_calls").fetchone()
+    assert row["outcome"] == "invalid" and row["cost_usd"] > 0
+
+
+def test_transient_error_returns_none_and_is_retryable():
+    ctx = make_ctx(provider=FakeProvider(default=AITransient("503")))
+    assert ctx.ai.run("t", "1", "sys", "c", Out) is None
+    assert ctx.ai.available
+
+
+def test_account_error_blocks_the_rest_of_the_run():
+    prov = FakeProvider(default=AIAccountError("401"))
+    ctx = make_ctx(provider=prov)
+    with pytest.raises(AIAccountError):
+        ctx.ai.run("t", "1", "sys", "c", Out)
+    assert not ctx.ai.available and ctx.ai.run("t", "1", "sys", "other", Out) is None
+    assert len(prov.calls) == 1
+
+
+def test_budget_stop_makes_no_call():
+    from tracker.config import Config
+    prov = FakeProvider(default='{"answer": "x"}')
+    ctx = make_ctx(provider=prov, config=Config(ai_daily_requests=1))
+    assert ctx.ai.run("t", "1", "sys", "a", Out) is not None
+    assert ctx.ai.run("t", "1", "sys", "b", Out) is None  # second request today: over the daily limit
+    assert len(prov.calls) == 1 and ctx.ai.budget.exhausted_reason == "daily_requests"
+
+
+def test_no_key_means_no_calls():
+    ctx = make_ctx(provider=None)
+    assert not ctx.ai.available and ctx.ai.run("t", "1", "s", "c", Out) is None
+
+
+def test_quote_in_ignores_case_and_punctuation_but_not_content():
+    text = "Applications close on 15 December 2026. Fluent German is required."
+    assert quote_in("applications close on 15 December, 2026", text)
+    assert not quote_in("Applications close on 16 December 2026", text)
+    assert not quote_in("", text) and not quote_in(None, text)

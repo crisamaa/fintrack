@@ -1,0 +1,7 @@
+{"offset": 0, "limit": 100, "totalFound": 2, "content": [
+ {"id": "744000012345678", "name": "Summer Internship 2027 - Wealth Management (f/m/d)", "ref": "https://api.smartrecruiters.com/v1/companies/acme/postings/744000012345678",
+  "releasedDate": "2026-10-20T09:14:00.000Z", "location": {"city": "Zurich", "country": "ch", "remote": false},
+  "department": {"label": "Wealth Management"}, "typeOfEmployment": {"label": "Internship"}},
+ {"id": "744000099999999", "name": "Senior Relationship Manager", "releasedDate": "2026-10-01T09:14:00.000Z",
+  "location": {"city": "Geneva", "country": "ch"}, "department": {"label": "Private Banking"}, "typeOfEmployment": {"label": "Full-time"}}
+]}

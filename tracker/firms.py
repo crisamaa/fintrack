@@ -1,65 +1,54 @@
-"""The firm list: loading, validation, saving, and telling whether two names are the same firm."""
+"""The seed firm list (firms/firms.yaml): hand-maintained starting points that discovery builds on.
+
+The database is the system of record; this file is re-read every run and upserted, so adding a firm by hand still
+works exactly as before. Removing a firm from the file does not delete it from the database (history is kept);
+disable it with `enabled: false` instead.
+"""
+from __future__ import annotations
+
 import os
 import re
-import unicodedata
 from pathlib import Path
+from typing import Literal
 
 import yaml
+from pydantic import BaseModel
 
-from tracker.models import ALLOWED_COUNTRIES, Firm
+from tracker.taxonomy import COUNTRIES_OF_INTEREST, LEGACY_SECTORS, SECTORS
 
 _ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
-_TRANSLIT = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss",
-                           "æ": "ae", "Æ": "AE", "ø": "o", "Ø": "O", "å": "a", "Å": "A", "ł": "l", "Ł": "L"})
-# Legal forms, filler words and "Switzerland" markers that say nothing about which firm it is.
-_STOP = frozenset("""ag sa sarl sas spa srl sl nv bv se ab as asa oyj plc ltd limited llc llp lp inc corp corporation co
-company gmbh kg ohg aktiengesellschaft genossenschaft societe anonyme cie bank banque banca banco the of and de la le
-et und von del della schweiz suisse svizzera switzerland designated activity group holding holdings""".split())
+Source = Literal["greenhouse", "lever", "ashby", "workday", "smartrecruiters", "recruitee", "personio", "page"]
 
 
-def fold(text: str) -> str:
-    """Lowercase ASCII with German umlauts transliterated (Bär -> baer) and other accents dropped."""
-    text = text.translate(_TRANSLIT)
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(c for c in text if not unicodedata.combining(c)).lower()
-    return re.sub(r"(?<![a-z])([a-z])\.([a-z])\.?(?![a-z])", r"\1\2", text)  # "S.A." -> "sa"
+class Firm(BaseModel):
+    id: str
+    name: str
+    sector: str                       # legacy single sector, or any key of taxonomy.SECTORS
+    sectors: list[str] = []           # extra overlapping sectors
+    country: str
+    source: Source
+    slug: str | None = None
+    site: str | None = None
+    careers_url: str | None = None
+    website: str | None = None
+    priority: int = 2
+    enabled: bool = True
 
-
-def name_tokens(name: str) -> list[str]:
-    """The tokens that identify a firm: folded, without legal forms and filler words."""
-    words = re.findall(r"[a-z0-9]+", fold(name))
-    core = [w for w in words if w not in _STOP]
-    return core or words
-
-
-def name_key(name: str) -> str:
-    return "".join(name_tokens(name))
-
-
-def same_firm(a: str, b: str) -> bool:
-    """True when one name's identifying tokens are all in the other's ("Vontobel" / "Bank Vontobel AG")."""
-    ta, tb = set(name_tokens(a)), set(name_tokens(b))
-    if not ta or not tb:
-        return False
-    small, big = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
-    return small <= big and len("".join(small)) >= 3
-
-
-_LEGAL = frozenset("""ag sa sarl sas spa srl sl nv bv se ab as asa oyj plc ltd limited llc llp lp inc corp corporation co
-company gmbh kg ohg aktiengesellschaft genossenschaft""".split())
-
-
-def make_id(name: str) -> str:
-    """A stable lowercase slug from a firm name: folded, legal forms dropped, words joined with hyphens."""
-    words = [w for w in re.findall(r"[a-z0-9]+", fold(name.split(",")[0])) if w not in _LEGAL]
-    return "-".join(words) or "firm"
+    def all_sectors(self) -> list[str]:
+        out = list(LEGACY_SECTORS.get(self.sector, [self.sector]))
+        return out + [s for s in self.sectors if s not in out]
 
 
 def _check(firm: Firm) -> None:
     if not _ID.fullmatch(firm.id):
         raise ValueError(f"{firm.id!r}: id must be a lowercase slug")
-    if firm.country not in ALLOWED_COUNTRIES:
+    if firm.country not in COUNTRIES_OF_INTEREST:
         raise ValueError(f"{firm.id}: country {firm.country!r} is not allowed")
+    for s in firm.all_sectors():
+        if s not in SECTORS:
+            raise ValueError(f"{firm.id}: unknown sector {s!r}")
+    if firm.priority not in (1, 2, 3):
+        raise ValueError(f"{firm.id}: priority must be 1, 2 or 3")
     if firm.source == "page":
         if not firm.careers_url:
             raise ValueError(f"{firm.id}: page firm needs careers_url")
@@ -76,7 +65,7 @@ def load_firms(path: Path) -> list[Firm]:
         raise ValueError(f"{path}: expected a list of firms")
     firms, seen = [], set()
     for item in items:
-        firm = Firm.model_validate(item)  # an unknown sector or source fails here (ValidationError is a ValueError)
+        firm = Firm.model_validate(item)
         _check(firm)
         if firm.id in seen:
             raise ValueError(f"duplicate firm id {firm.id!r}")
@@ -85,13 +74,19 @@ def load_firms(path: Path) -> list[Firm]:
     return firms
 
 
+def load_names(path: Path) -> list[str]:
+    """A plain YAML list of names (blocked.yaml, unresolved.yaml). A missing file means none."""
+    if not Path(path).exists():
+        return []
+    names = yaml.safe_load(Path(path).read_text()) or []
+    if not isinstance(names, list):
+        raise ValueError(f"{path} must be a plain list of names")
+    return [str(n) for n in names]
+
+
 def write_yaml(path: Path, data) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=120))
     os.replace(tmp, path)
-
-
-def save_firms(path: Path, firms: list[Firm]) -> None:
-    write_yaml(path, [f.model_dump(exclude_none=True) for f in firms])
