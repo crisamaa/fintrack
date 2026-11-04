@@ -2,7 +2,7 @@
 import hashlib
 import time
 from typing import Callable
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import httpx
@@ -12,6 +12,7 @@ from tracker.feeds import SourceError
 
 USER_AGENT = "europe-internship-tracker/1.0"
 MIN_TEXT_CHARS = 200
+MAX_REDIRECTS = 5
 
 
 def page_text(html: str) -> str:
@@ -60,18 +61,21 @@ class PoliteClient:
         self._robots: dict[str, RobotFileParser | None] = {}
         self._client = httpx.Client(
             headers={"User-Agent": USER_AGENT},
-            follow_redirects=True,
+            follow_redirects=False,  # redirects are followed manually, hop by hop
             timeout=timeout,
             transport=transport,
         )
 
-    def _get(self, url: str) -> httpx.Response:
-        host = urlsplit(url).netloc
+    def _wait(self, host: str) -> None:
         last = self._last.get(host)
         if last is not None:
             wait = self.min_delay_s - (self._clock() - last)
             if wait > 0:
                 self._sleep(wait)
+
+    def _get(self, url: str) -> httpx.Response:
+        host = urlsplit(url).netloc
+        self._wait(host)
         try:
             return self._client.get(url)
         finally:
@@ -87,8 +91,8 @@ class PoliteClient:
                 if resp.status_code == 200:
                     parser = RobotFileParser()
                     parser.parse(resp.text.splitlines())
-            except httpx.HTTPError:
-                parser = None  # unreachable robots.txt counts as allowed
+            except Exception:
+                parser = None  # any failure to fetch or parse robots.txt counts as allowed
             self._robots[host] = parser
         return self._robots[host]
 
@@ -96,15 +100,34 @@ class PoliteClient:
         parser = self._robots_for(url)
         return True if parser is None else parser.can_fetch(USER_AGENT, url)
 
-    def get_text(self, url: str) -> str:
-        if not self.allowed(url):
-            raise SourceError(f"{url}: disallowed by robots.txt")
-        try:
+    def _fetch(self, url: str) -> tuple[httpx.Response, str]:
+        """GET following redirects manually; every hop is robots-checked and delayed."""
+        for _ in range(MAX_REDIRECTS + 1):
+            if not self.allowed(url):
+                raise SourceError(f"{url}: disallowed by robots.txt")
             resp = self._get(url)
-            resp.raise_for_status()
-        except httpx.HTTPError as e:
+            if not resp.is_redirect:
+                resp.raise_for_status()
+                return resp, url
+            location = resp.headers.get("location")
+            if not location:
+                raise SourceError(f"GET {url}: redirect without Location")
+            url = urljoin(url, location)
+        raise SourceError(f"GET {url}: more than {MAX_REDIRECTS} redirects")
+
+    def get_text(self, url: str) -> str:
+        try:
+            resp, final_url = self._fetch(url)
+        except (httpx.HTTPError, httpx.InvalidURL) as e:
             raise SourceError(f"GET {url}: {e}") from e
         text = page_text(resp.text)
         if len(text) < MIN_TEXT_CHARS:
-            return render_with_browser(url)
+            # Same per-host delay applies. Chromium's own subresource requests
+            # are out of scope and are not throttled or robots-checked.
+            host = urlsplit(final_url).netloc
+            self._wait(host)
+            try:
+                return render_with_browser(final_url)
+            finally:
+                self._last[host] = self._clock()
         return text

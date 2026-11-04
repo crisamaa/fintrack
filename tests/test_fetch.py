@@ -83,34 +83,100 @@ def test_robots_cached_per_host():
     assert robots.call_count == 1
 
 
-@respx.mock
 def test_delay_between_same_host():
-    respx.get("https://a.example/robots.txt").respond(404)
-    respx.get("https://a.example/1").respond(200, text=LONG)
-    respx.get("https://a.example/2").respond(200, text=LONG)
-    respx.get("https://b.example/robots.txt").respond(404)
-    respx.get("https://b.example/1").respond(200, text=LONG)
     now = [100.0]
     stamps = []
+
+    def handler(request):
+        stamps.append((request.url.host, now[0]))
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        return httpx.Response(200, text=LONG)
 
     def sleep(s):
         now[0] += s
 
-    c = PoliteClient(clock=lambda: now[0], sleep=sleep)
-    orig = c._client.send
-
-    def send(request, **kw):
-        stamps.append((request.url.host, request.url.path, now[0]))
-        return orig(request, **kw)
-
-    c._client.send = send
+    c = PoliteClient(clock=lambda: now[0], sleep=sleep,
+                     transport=httpx.MockTransport(handler))
     c.get_text("https://a.example/1")
     c.get_text("https://a.example/2")
     c.get_text("https://b.example/1")
-    a = [t for h, _, t in stamps if h == "a.example"]
-    assert all(y - x >= 1.0 for x, y in zip(a, a[1:]))
+    a = [t for h, t in stamps if h == "a.example"]
     assert len(a) == 3  # robots + two pages
-    assert [t for h, _, t in stamps if h == "b.example"][0] - a[-1] < 1.0 + 1e-9
+    assert all(y - x >= 1.0 for x, y in zip(a, a[1:]))
+    assert [t for h, t in stamps if h == "b.example"][0] - a[-1] < 1.0 + 1e-9
+
+
+def test_browser_fallback_respects_host_delay(monkeypatch):
+    now = [100.0]
+    events = []
+
+    def handler(request):
+        events.append(("http", now[0]))
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        return httpx.Response(200, text="<p>tiny</p>")
+
+    def render(url):
+        events.append(("browser", now[0]))
+        now[0] += 0.2
+        return "rendered " * 40
+
+    monkeypatch.setattr(fetch, "render_with_browser", render)
+    c = PoliteClient(clock=lambda: now[0], sleep=lambda s: now.__setitem__(0, now[0] + s),
+                     transport=httpx.MockTransport(handler))
+    c.get_text("https://a.example/spa")
+    http_last = [t for k, t in events if k == "http"][-1]
+    browser_t = [t for k, t in events if k == "browser"][0]
+    assert browser_t - http_last >= 1.0
+    # a following request waits relative to the end of the browser render
+    c.get_text("https://a.example/spa2")
+    after = [t for k, t in events if k == "http"][-1]
+    assert after - (browser_t + 0.2) >= 1.0 - 1e-9
+
+
+@respx.mock
+def test_redirect_cross_host_is_followed_when_allowed():
+    respx.get("https://a.example/robots.txt").respond(404)
+    respx.get("https://b.example/robots.txt").respond(404)
+    respx.get("https://a.example/old").respond(302, headers={"location": "https://b.example/new"})
+    respx.get("https://b.example/new").respond(200, text=LONG)
+    assert "internship" in make_client().get_text("https://a.example/old")
+
+
+@respx.mock
+def test_redirect_to_disallowed_host_raises():
+    respx.get("https://a.example/robots.txt").respond(404)
+    respx.get("https://b.example/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
+    respx.get("https://a.example/old").respond(302, headers={"location": "https://b.example/new"})
+    target = respx.get("https://b.example/new").respond(200, text=LONG)
+    with pytest.raises(SourceError):
+        make_client().get_text("https://a.example/old")
+    assert not target.called
+
+
+@respx.mock
+def test_redirect_loop_capped_at_five_hops():
+    respx.get("https://a.example/robots.txt").respond(404)
+    loop = respx.get("https://a.example/loop").respond(302, headers={"location": "/loop"})
+    with pytest.raises(SourceError):
+        make_client().get_text("https://a.example/loop")
+    assert loop.call_count == 6  # initial request + 5 redirects
+
+
+@respx.mock
+def test_robots_failures_of_any_kind_count_as_allowed(monkeypatch):
+    respx.get("https://a.example/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
+    monkeypatch.setattr(fetch.RobotFileParser, "parse",
+                        lambda self, lines: (_ for _ in ()).throw(UnicodeDecodeError("utf-8", b"", 0, 1, "bad")))
+    assert make_client().allowed("https://a.example/jobs") is True
+
+
+def test_invalid_url_is_allowed_by_robots_then_source_error():
+    c = make_client()
+    assert c.allowed("http://a.example:badport/x") is True
+    with pytest.raises(SourceError):
+        c.get_text("http://a.example:badport/x")
 
 
 @respx.mock
