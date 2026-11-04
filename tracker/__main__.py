@@ -92,7 +92,8 @@ def main(argv: list[str] | None = None) -> int:
         print(db.backup_sqlite(conn, out))
         return 0
     if args.cmd == "restore":
-        db.snapshot(cfg.db_dir, cfg.backup_dir, "pre-restore", now)  # the current state is kept first
+        if cfg.db_dir.exists():
+            db.snapshot(cfg.db_dir, cfg.backup_dir, "pre-restore", now)  # the current state is kept first
         print(json.dumps(db.restore(Path(args.source), cfg.db_dir, now), indent=1))
         return 0
     if args.cmd == "migrate":

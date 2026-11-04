@@ -119,3 +119,17 @@ def test_committed_legacy_data_imports_cleanly(ctx):
     seeds.sync(ctx, Path("firms"))
     report = legacy.import_v1(ctx, Path("data/legacy"))
     assert report is not None and report["imported"] + len(report["mapped"]) == report["roles"]
+
+
+def test_cli_backup_then_restore_after_losing_the_data(tmp_path, monkeypatch):
+    from tracker.__main__ import main
+    monkeypatch.chdir(tmp_path)
+    ctx = make_ctx()
+    employer(ctx)
+    db.save(ctx.conn, tmp_path / "data" / "db")
+    assert main(["backup", "--out", "backups/b.sqlite"]) == 0
+    shutil.rmtree(tmp_path / "data" / "db")
+    assert main(["restore", "backups/b.sqlite"]) == 0
+    assert db.counts(db.load(tmp_path / "data" / "db", NOW))["employers"] == 1
+    assert main(["restore", "backups/b.sqlite"]) == 0  # with data present, the current state is snapshotted first
+    assert any(p.name.endswith("pre-restore") for p in (tmp_path / "backups").iterdir())

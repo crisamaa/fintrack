@@ -1,91 +1,57 @@
-# Europe finance internship tracker
+# Fintrack
 
-A small website that lists finance internships (banking, private equity, finance, fintech) in Switzerland and the
-EU/EEA. A Python job reads firms' job boards and careers pages every day, asks a small AI model (Google Gemini Flash-Lite) to
-pick out internships and fill in country, season, closing date and languages, and writes the result to a static
-site on GitHub Pages. There is no server and no database: the data lives in the repository as JSON.
+A personal finance-internship intelligence tool. It discovers financial employers and their recruitment sources,
+monitors them on individual schedules, records every internship with where each fact came from, tracks recurring
+programs and their recruitment windows, assesses your eligibility in your own browser, and supports applications
+and outreach to firms that advertise nothing.
 
-## Setup (done by the owner)
+- **Tracker** (`tracker/`, Python): runs on GitHub Actions six times a day; market data in a SQLite database kept as
+  JSONL in `data/db/`.
+- **Site** (`site/`, static): GitHub Pages. Your profile, applications and contacts stay in your browser.
 
-These steps involve accounts and keys, so you do them yourself.
+## Workspaces
 
-1. Create a GitHub repository (public, so Pages and Actions are free).
-2. Push the `feat/europe-internship-tracker` branch and merge it into the default branch.
-3. In the repository, go to Settings > Pages and set the source to **GitHub Actions**.
-4. Create a Gemini API key at aistudio.google.com (Get API key). The free tier needs no billing. If you use a billed key,
-   also add the `AI_MONTHLY_CAP_USD` variable described under "What it costs".
-5. Add the key as a repository secret named `GEMINI_API_KEY` (Settings > Secrets and
-   variables > Actions > New repository secret).
-6. Open the Actions tab, choose **Daily run**, and click **Run workflow**. When it finishes, the site is at
-   `https://<your-user>.github.io/<repository>/`.
+| View | What it is for |
+| --- | --- |
+| Discover | every internship found, with eligibility, fit ranking, sources and evidence |
+| Programs | recurring programs: confirmed, observed and estimated recruitment windows |
+| Firms | every tracked employer: sectors, offices, sources and their health, openings, programs, prospect research |
+| Outreach | firms worth approaching directly; contacts, interactions, follow-ups, message drafts (never sent for you) |
+| Pipeline | your applications by stage |
+| Deadlines | closing dates, your next steps, outreach follow-ups, program openings |
+| Sources | source health, AI usage and spend, search, discovery, coverage metrics and gaps |
+| Profile | your eligibility profile and preferences (private, in this browser) |
 
-## What runs when
+## Setup (owner)
 
-| Workflow | When | What it does |
-| --- | --- | --- |
-| Daily run | 05:00 UTC every day, or by hand | Reads all firms, enriches new postings, commits `data/` and `site/data/` if they changed, deploys `site/` to Pages. If the run fails, data is still committed, the site is still deployed, and the workflow is marked failed. |
-| Monthly discovery | 04:00 UTC on the 1st, or by hand | Reads FINMA's list of authorised banks, looks for job boards we can read, and commits changes to `firms/`. |
-| Tests | On every push | `pytest` and `node --test "site/*.test.mjs"`. |
+1. Settings → Pages: source **GitHub Actions**.
+2. Create a Gemini API key (aistudio.google.com) and add it as the repository secret `GEMINI_API_KEY`. Before using a
+   billed key, add the variable `AI_MONTHLY_CAP_USD` (e.g. `5`). See [docs/configuration.md](docs/configuration.md).
+3. Actions → **Tracker run** → Run workflow. The site is then at `https://<user>.github.io/<repository>/`.
+4. Open **Profile** on the site and enter your work rights (tick Confirmed only for what you have verified),
+   degree, graduation year and languages.
 
-Only one daily run goes at a time. The run stops starting new firms after 45 minutes, then saves its data and
-updates the site, so a cut-off run still publishes what it read. Firms never checked go first, then the least
-recently checked. The first pass over every firm is too big for one run, so the site fills in over the first few
-runs; after that, unchanged pages are skipped and runs are short.
-
-## What it costs
-
-- GitHub Actions and Pages: free for a public repository.
-- Gemini API: `gemini-3.5-flash-lite` at $0.30 per million input tokens and $2.50 per million output tokens (thinking set to minimal).
-  **There is no spending cap unless you set one.** That is fine on Gemini's free tier, which costs nothing. Every
-  Daily run without a cap shows a yellow "No AI spending cap" warning on its page, with what the month would cost at
-  paid prices (tracked in `data/spend.json`).
-  **Before switching to a billed key**, add a repository variable `AI_MONTHLY_CAP_USD` (Settings > Secrets and
-  variables > Actions > Variables), for example `5`. No new AI call then starts once the month's spend is within
-  $0.10 of the cap. An invalid value stops the run before anything is spent. Also set a budget alert in Google Cloud.
-- The model is a single constant, `MODEL` in `tracker/ai.py`. Changing the model is a one-line edit; update the
-  prices in `tracker/budget.py` to match.
-
-## Adding a firm
-
-Edit `firms/firms.yaml` and add an entry:
-
-```yaml
-- id: example-bank          # unique, lower-case, stable
-  name: Example Bank
-  sector: banking           # banking | private_equity | finance | fintech
-  country: CH               # home country, ISO code
-  source: greenhouse        # greenhouse | lever | ashby | workday | page
-  slug: example-bank        # board name for greenhouse/lever/ashby; "tenant/board" plus `site` for workday
-```
-
-For a firm with no readable board, use `source: page` and `careers_url: https://...` instead of `slug`. Check
-the site's terms and `robots.txt` allow the visit first; the tracker also obeys `robots.txt` itself. Run
-`pytest` before pushing.
-
-Firms that refuse automated visits go in `firms/blocked.yaml` (a plain list of names). They are not read; the
-site lists them under "Not covered" so visitors know to check them by hand.
-
-## Known limits
-
-- **Firms not covered** (`firms_not_covered` in the site data): some firms block automated visits, for example
-  UBS, EFG, BNP Paribas and others in `firms/blocked.yaml`. Their internships are missing and must be checked by hand.
-- **Unposted roles**: many internships are never posted publicly or are filled through campus or recruiter
-  channels. The tracker only sees what firms publish on their own boards and careers pages.
-- **Occasional AI errors**: the AI can misread a page, miss a posting, or get a date, country or season wrong.
-  Postings it fails on repeatedly are retried less often. Always open the original ad before applying.
-- Careers pages are read as text; heavy JavaScript pages use a headless browser fallback and may still come up empty.
-
-## Before opening the site to others
-
-Re-check the terms of use and `robots.txt` of the firms and boards listed, and the Google Gemini API and GitHub terms,
-before advertising the site or letting other people rely on it. Permission to read a page for personal use does
-not automatically extend to a public service.
+Adding a firm by hand: add it to `firms/firms.yaml` (format unchanged from v1; optional `sectors`, `website`,
+`priority`, `enabled`), or a name and website to `firms/candidates.yaml` for discovery to verify.
 
 ## Development
 
-```
+```bash
 python -m pip install -e ".[dev]"
-pytest
-node --test "site/*.test.mjs"
-python -m tracker.daily      # needs GEMINI_API_KEY; makes real AI calls
 ```
+
+```bash
+pytest && python -m pyflakes tracker tests && node --test site/*.test.mjs
+```
+
+## Documentation
+
+- [Architecture](docs/architecture.md): modules, database, lifecycle, dedup, provenance, scheduling, Gemini, security
+- [Source connectors](docs/connectors.md): supported platforms, adding one, access restrictions
+- [Eligibility and ranking](docs/eligibility.md)
+- [Coverage measurement](docs/coverage.md)
+- [Configuration and costs](docs/configuration.md)
+- [Operations](docs/operations.md): running, monitoring, AI spend, backup, restore, rollback
+- [Known limitations](docs/limitations.md)
+- [Implementation record](docs/IMPLEMENTATION.md): what was kept, changed and removed in the v2 overhaul, and what
+  remains
