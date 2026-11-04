@@ -12,7 +12,7 @@ from pydantic import BaseModel, ValidationError
 from tracker.budget import Budget
 from tracker.models import ALLOWED_COUNTRIES, Enrichment, Firm, Posting
 
-MODEL = "gemini-2.5-flash-lite"
+MODEL = "gemini-3.5-flash-lite"
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 # Finish reasons meaning the model declined or was blocked (billed, but unusable).
 _BLOCKED = {"SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "LANGUAGE", "OTHER"}
@@ -71,6 +71,7 @@ class GeminiClient:
                 "maxOutputTokens": max_tokens,
                 "responseMimeType": "application/json",
                 "responseJsonSchema": schema,
+                "thinkingConfig": {"thinkingLevel": "minimal"},  # extraction needs no reasoning; thinking is billed
             },
         }
         r = self.http.post(API_URL.format(model=MODEL), json=body, headers={"x-goog-api-key": self.api_key})

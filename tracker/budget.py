@@ -6,8 +6,8 @@ from pathlib import Path
 
 MONTHLY_CAP_USD = 5.00
 STOP_AT_USD = 4.90
-INPUT_USD_PER_M = 0.10
-OUTPUT_USD_PER_M = 0.40
+INPUT_USD_PER_M = 0.30
+OUTPUT_USD_PER_M = 2.50
 _EPS = 1e-9
 
 
