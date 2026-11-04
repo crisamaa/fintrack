@@ -237,7 +237,7 @@ kbd {
 }
 .bar h1 {
   margin: 0;
-  font: var(--display-weight) 26px/1.05 var(--font-display);
+  font: 600 22px/1.05 var(--font-ui);
   letter-spacing: var(--display-tracking);
 }
 [data-theme="terminal"] .bar h1 { font-size: 19px; }
@@ -700,7 +700,7 @@ kbd {
   .nav a[aria-current="page"]::before { display: none; }
   .rail-foot { display: none; }
   .bar { padding: 14px 16px 10px; }
-  .bar h1 { font-size: 22px; }
+  .bar h1 { font-size: 20px; }
   .detail { position: fixed; inset: 0; width: auto !important; z-index: 30; }
   .facts { grid-template-columns: 100px 1fr; }
   .rights-row { grid-template-columns: 1fr 1fr; }
