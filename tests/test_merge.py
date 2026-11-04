@@ -103,9 +103,35 @@ def test_no_closing_date_stays_open():
 def test_unchanged_updates_last_checked_and_closes_nothing():
     r1 = role(1)
     res = FirmResult(firm_id="acme", status="unchanged", postings=[])
-    roles, st = merge({r1.id: r1}, res, FIRM, FirmState(zero_streak=1), {}, TODAY)
+    roles, st = merge({r1.id: r1}, res, FIRM, FirmState(), {}, TODAY)
     assert roles[r1.id].status == "open" and roles[r1.id].last_checked == TODAY
-    assert st.last_checked == TODAY and st.zero_streak == 1
+    assert st.last_checked == TODAY and st.zero_streak == 0
+
+
+def test_unchanged_after_empty_run_counts_as_another_empty_run():
+    r1 = role(1)
+    res = FirmResult(firm_id="acme", status="unchanged", postings=[])
+    roles, st = {r1.id: r1}, FirmState(zero_streak=1)
+    roles, st = merge(roles, res, FIRM, st, {}, TODAY)
+    assert st.zero_streak == 2 and roles[r1.id].status == "open"
+    roles, st = merge(roles, res, FIRM, st, {}, TODAY)
+    assert st.zero_streak == 3 and roles[r1.id].status == "closed" and roles[r1.id].closed_on == TODAY
+
+
+def test_expired_role_is_not_reopened_and_keeps_closed_on():
+    r1 = role(1, closes=TODAY - timedelta(days=3), status="closed", closed_on=TODAY - timedelta(days=1))
+    roles, _ = merge({r1.id: r1}, ok(posting(1)), FIRM, FirmState(), {}, TODAY)
+    assert roles[r1.id].status == "closed" and roles[r1.id].closed_on == TODAY - timedelta(days=1)
+
+
+def test_expired_role_closed_on_stable_over_two_runs():
+    r1 = role(1, closes=TODAY - timedelta(days=1))
+    roles, state = {r1.id: r1}, FirmState()
+    for d in (0, 1):
+        day = TODAY + timedelta(days=d)
+        roles, state = merge(roles, ok(posting(1)), FIRM, state, {}, day)
+        roles = close_expired(roles, day)
+        assert roles[r1.id].status == "closed" and roles[r1.id].closed_on == TODAY
 
 
 def test_merge_does_not_mutate_inputs():
@@ -117,4 +143,4 @@ def test_merge_does_not_mutate_inputs():
 
 def test_state_loads_with_missing_fields():
     s = FirmState.model_validate({"hash": "h"})
-    assert s.zero_streak == 0 and s.rejected == [] and s.role_failures == {}
+    assert s.zero_streak == 0 and s.rejected == [] and s.role_failures == {} and s.given_up == {}

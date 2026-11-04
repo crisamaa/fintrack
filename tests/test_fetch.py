@@ -264,3 +264,39 @@ def test_render_with_browser_failure_raises_source_error(monkeypatch):
     monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
     with pytest.raises(SourceError):
         fetch.render_with_browser("https://a.example/")
+
+
+def _feed_client(polite, hits):
+    def handler(request):
+        hits.append(str(request.url))
+        return httpx.Response(200, json={})
+    return httpx.Client(transport=httpx.MockTransport(handler), event_hooks=polite.event_hooks())
+
+
+def _polite(robots, sleeps, now):
+    def handler(request):
+        if request.url.path == "/robots.txt":
+            return httpx.Response(200, text=robots)
+        return httpx.Response(200, text="x")
+    return PoliteClient(transport=httpx.MockTransport(handler), clock=lambda: now[0],
+                        sleep=lambda s: sleeps.append(s))
+
+
+def test_feed_client_waits_between_requests_to_one_host():
+    sleeps, hits, now = [], [], [100.0]
+    polite = _polite("User-agent: *\nAllow: /", sleeps, now)
+    c = _feed_client(polite, hits)
+    c.get("https://api.test/a")
+    sleeps.clear()
+    c.get("https://api.test/b")
+    assert len(sleeps) == 1 and 0 < sleeps[0] <= 1.0
+    assert hits == ["https://api.test/a", "https://api.test/b"]
+
+
+def test_feed_client_obeys_robots_disallow():
+    sleeps, hits, now = [], [], [100.0]
+    polite = _polite("User-agent: *\nDisallow: /private", sleeps, now)
+    c = _feed_client(polite, hits)
+    with pytest.raises(SourceError):
+        c.get("https://api.test/private/jobs")
+    assert hits == []

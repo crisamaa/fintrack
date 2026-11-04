@@ -116,6 +116,21 @@ class PoliteClient:
             self._robots[host] = parser
         return self._robots[host]
 
+    def event_hooks(self) -> dict[str, list[Callable]]:
+        """httpx event hooks that make another client obey robots.txt and the per-host delay."""
+        def before(request: httpx.Request) -> None:
+            url = str(request.url)
+            if not self.allowed(url):
+                raise SourceError(f"{url}: disallowed by robots.txt")
+            host = urlsplit(url).netloc
+            self._wait(host)
+            self._last[host] = self._clock()
+
+        def after(response: httpx.Response) -> None:
+            self._last[urlsplit(str(response.request.url)).netloc] = self._clock()
+
+        return {"request": [before], "response": [after]}
+
     def allowed(self, url: str) -> bool:
         parser = self._robots_for(url)
         return True if parser is None else parser.can_fetch(USER_AGENT, url)

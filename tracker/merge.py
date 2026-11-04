@@ -21,11 +21,15 @@ class FirmState(BaseModel):
     zero_streak: int = 0
     # Role ids judged not worth a place on the site; never enriched again.
     rejected: list[str] = []
-    # Consecutive AI failures per role id (dropped on success).
+    # Consecutive unusable-reply / 4xx failures per role id (dropped on success).
     role_failures: dict[str, int] = {}
+    # Role ids given up after repeated failures, with the date they were given up; retried later.
+    given_up: dict[str, date] = {}
     # Consecutive AI failures reading one page hash.
     fail_hash: str | None = None
     fail_count: int = 0
+    # Page hash given up on after repeated failures; not read again until the page changes.
+    gave_up_hash: str | None = None
 
 
 def _close(role: Role, today: date) -> Role:
@@ -48,8 +52,15 @@ def merge(
     mine = [rid for rid, r in out.items() if r.firm_id == firm.id]
 
     if result.status == "unchanged":
+        # After an empty read the page hash is kept, so each unchanged run is another empty run.
+        if state.zero_streak > 0:
+            new_state.zero_streak = state.zero_streak + 1
         for rid in mine:
-            if out[rid].status == "open":
+            if out[rid].status != "open":
+                continue
+            if new_state.zero_streak >= ZERO_RESULTS_TO_CLOSE:
+                out[rid] = _close(out[rid], today)
+            else:
                 out[rid] = out[rid].model_copy(update={"last_checked": today})
         return out, new_state
 
@@ -59,10 +70,10 @@ def merge(
         seen.add(rid)
         existing = out.get(rid)
         if existing is not None:
-            out[rid] = existing.model_copy(update={
-                "title": p.title, "status": "open", "closed_on": None,
-                "last_seen": today, "last_checked": today,
-            })
+            update = {"title": p.title, "last_seen": today, "last_checked": today}
+            if existing.closes is None or existing.closes >= today:
+                update.update(status="open", closed_on=None)  # a role past its closing date stays closed
+            out[rid] = existing.model_copy(update=update)
         elif rid in enrichments:
             e = enrichments[rid]
             out[rid] = Role(

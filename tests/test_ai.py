@@ -4,7 +4,7 @@ import anthropic
 import httpx2 as httpx
 import pytest
 
-from tracker.ai import MODEL, enrich, extract_postings
+from tracker.ai import MODEL, AIUnusable, enrich, extract_postings
 from tracker.budget import Budget
 from tracker.models import Enrichment, Firm, Posting
 
@@ -112,18 +112,21 @@ def test_no_api_call_when_budget_spent(budget):
 
 def test_refusal_returns_none_but_is_billed(budget):
     c = FakeClient([reply(None, stop="refusal", inp=1_000_000, out=0)])
-    assert extract_postings(c, budget, FIRM, "t") is None
+    with pytest.raises(AIUnusable):
+        extract_postings(c, budget, FIRM, "t")
     assert budget.spent() == pytest.approx(0.10)
 
 
 def test_refusal_checked_before_parsed_output(budget):
     c = FakeClient([reply(enrichment(["CH"]), stop="refusal")])
-    assert enrich(c, budget, POSTING) is None
+    with pytest.raises(AIUnusable):
+        enrich(c, budget, POSTING)
 
 
 def test_missing_parsed_output_returns_none_but_is_billed(budget):
     c = FakeClient([reply(None, stop="max_tokens", inp=1_000_000, out=0)])
-    assert enrich(c, budget, POSTING) is None
+    with pytest.raises(AIUnusable):
+        enrich(c, budget, POSTING)
     assert budget.spent() == pytest.approx(0.10)
 
 
@@ -146,9 +149,10 @@ def test_chunks_are_at_most_40000_chars(budget):
     assert chunk_text("") == [] or chunk_text("") == [""]
 
 
-def test_one_failed_chunk_makes_whole_page_none(budget):
+def test_one_unusable_chunk_fails_whole_page(budget):
     c = FakeClient([reply(wrapper([item()])), reply(None, stop="refusal")])
-    assert extract_postings(c, budget, FIRM, "q" * 50_000) is None
+    with pytest.raises(AIUnusable):
+        extract_postings(c, budget, FIRM, "q" * 50_000)
 
 
 def test_budget_exhausted_midway_returns_none(budget):
@@ -190,8 +194,11 @@ GOOD = enrichment(["CH"]).model_dump_json()
 def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
     r["usage"] = {"input_tokens": 1_000_000, "output_tokens": 1_000_000}
     b = Budget(tmp_path / "b.json", "2026-11")
-    out = enrich(FakeClient([r]), b, POSTING)
-    assert (out is not None) == (label == "valid")
+    if label == "valid":
+        assert enrich(FakeClient([r]), b, POSTING) is not None
+    else:
+        with pytest.raises(AIUnusable):
+            enrich(FakeClient([r]), b, POSTING)
     assert b.spent() == pytest.approx(0.60)
 
 
@@ -200,10 +207,11 @@ def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
     reply(None, stop="max_tokens", text='{"postings": [{"ti'),
     reply(None, text=""),
 ])
-def test_extract_unusable_output_is_none_and_billed(tmp_path, r):
+def test_extract_unusable_output_raises_and_is_billed(tmp_path, r):
     r["usage"] = {"input_tokens": 1_000_000, "output_tokens": 0}
     b = Budget(tmp_path / "b.json", "2026-11")
-    assert extract_postings(FakeClient([r]), b, FIRM, "t") is None
+    with pytest.raises(AIUnusable):
+        extract_postings(FakeClient([r]), b, FIRM, "t")
     assert b.spent() == pytest.approx(0.10)
 
 

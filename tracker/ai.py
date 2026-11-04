@@ -1,4 +1,8 @@
-"""Budget-capped AI reading of career pages and postings. Returns None when a call should be retried later."""
+"""Budget-capped AI reading of career pages and postings.
+
+Returns None when nothing was billed and the call should simply be retried later (budget stop, rate limit,
+connection trouble, 5xx). Raises AIUnusable when a billed reply was unusable (refusal, cut-off, invalid output).
+"""
 import hashlib
 from urllib.parse import urljoin, urlparse
 
@@ -35,6 +39,10 @@ ENRICH_SYSTEM = (
 )
 
 
+class AIUnusable(Exception):
+    """The model replied (and was billed) but the reply could not be used."""
+
+
 class ExtractedPosting(BaseModel):
     title: str
     url: str
@@ -51,7 +59,8 @@ def chunk_text(text: str) -> list[str]:
 
 
 def _call(client, budget: Budget, *, model: type[BaseModel], system: str, content: str):
-    """One billed call. Returns a validated `model` or None (budget, API trouble, refusal, bad output).
+    """One billed call. Returns a validated `model`, None (budget stop or transient API trouble, nothing billed),
+    or raises AIUnusable (refusal, cut-off or invalid output, which were billed).
 
     Usage is recorded straight after the response, before anything is validated, so a billed
     refusal, cut-off or garbled reply still counts against the budget.
@@ -75,12 +84,12 @@ def _call(client, budget: Budget, *, model: type[BaseModel], system: str, conten
         raise
     budget.record(resp.usage.input_tokens, resp.usage.output_tokens)
     if resp.stop_reason == "refusal":
-        return None
+        raise AIUnusable("model refused")
     text = "".join(b.text for b in resp.content if b.type == "text")
     try:
         return model.model_validate_json(text)
-    except ValidationError:
-        return None
+    except ValidationError as e:
+        raise AIUnusable("invalid model output") from e
 
 
 def _resolve(url: str, base: str | None) -> str | None:
