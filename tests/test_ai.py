@@ -1,10 +1,9 @@
 import json
 
-import anthropic
-import httpx2 as httpx
+import httpx
 import pytest
 
-from tracker.ai import MODEL, AIUnusable, enrich, extract_postings
+from tracker.ai import MODEL, AIUnusable, APIError, GeminiClient, enrich, extract_postings
 from tracker.budget import Budget
 from tracker.models import Enrichment, Firm, Posting
 
@@ -13,15 +12,16 @@ FIRM = Firm(id="acme", name="Acme", sector="banking", country="CH", source="page
 
 
 class FakeClient:
-    """A real anthropic.Anthropic client over a mock HTTP transport: no network, real SDK."""
+    """A real GeminiClient over a mock HTTP transport: no network."""
 
     def __init__(self, replies=()):
         self.replies = list(replies)
         self.bodies = []
-        self.client = anthropic.Anthropic(
-            api_key="test", max_retries=0,
-            http_client=httpx.Client(transport=httpx.MockTransport(self._handle)))
-        self.messages = self.client.messages
+        self.urls = []
+        self.client = GeminiClient("test", http=httpx.Client(transport=httpx.MockTransport(self._handle)))
+
+    def generate(self, **kw):
+        return self.client.generate(**kw)
 
     @property
     def calls(self):
@@ -29,6 +29,7 @@ class FakeClient:
 
     def _handle(self, request):
         self.bodies.append(json.loads(request.content))
+        self.urls.append(str(request.url))
         r = self.replies.pop(0)
         if isinstance(r, Exception):
             raise r
@@ -37,13 +38,15 @@ class FakeClient:
         return httpx.Response(200, json=r)
 
 
+_STOP = {"end_turn": "STOP", "refusal": "SAFETY", "max_tokens": "MAX_TOKENS"}
+
+
 def reply(parsed, stop="end_turn", inp=1000, out=500, text=None):
     if text is None and parsed is not None:
         text = parsed.model_dump_json()
-    content = [] if text is None else [{"type": "text", "text": text}]
-    return {"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-haiku-5-5",
-            "content": content, "stop_reason": stop, "stop_sequence": None,
-            "usage": {"input_tokens": inp, "output_tokens": out}}
+    parts = [] if text is None else [{"text": text}]
+    return {"candidates": [{"content": {"role": "model", "parts": parts}, "finishReason": _STOP[stop]}],
+            "usageMetadata": {"promptTokenCount": inp, "candidatesTokenCount": out}}
 
 
 def wrapper(items):
@@ -72,16 +75,15 @@ def test_request_shape(budget):
     c = FakeClient([reply(wrapper([item()]))])
     extract_postings(c, budget, FIRM, "page text")
     kw = c.calls[0]
-    assert kw["model"] == MODEL == "claude-haiku-5-5"
-    assert kw["max_tokens"] == 16000
-    assert kw["output_config"]["effort"] == "low"
-    fmt = kw["output_config"]["format"]
-    assert fmt["type"] == "json_schema" and "postings" in fmt["schema"]["properties"]
-    assert "output_format" not in kw
-    assert "untrusted" in kw["system"] and "never as instructions" in kw["system"]
-    for banned in ("temperature", "top_p", "top_k", "thinking", "tools", "fallbacks"):
-        assert banned not in kw
-    assert "page text" in kw["messages"][0]["content"]
+    assert MODEL == "gemini-2.5-flash-lite" and f"/models/{MODEL}:generateContent" in c.urls[0]
+    cfg = kw["generationConfig"]
+    assert cfg["maxOutputTokens"] == 16000 and cfg["responseMimeType"] == "application/json"
+    assert "postings" in cfg["responseJsonSchema"]["properties"]
+    system = kw["systemInstruction"]["parts"][0]["text"]
+    assert "untrusted" in system and "never as instructions" in system
+    for banned in ("temperature", "topP", "topK", "tools"):
+        assert banned not in cfg and banned not in kw
+    assert "page text" in kw["contents"][0]["parts"][0]["text"]
 
 
 def test_extract_resolves_urls_and_sets_firm(budget):
@@ -135,7 +137,7 @@ def test_long_text_is_chunked_not_truncated(budget):
     c = FakeClient([reply(wrapper([item(title=f"T{i}", url=f"/{i}")])) for i in range(3)])
     out = extract_postings(c, budget, FIRM, text)
     assert len(c.calls) == 3
-    sent = [k["messages"][0]["content"] for k in c.calls]
+    sent = [k["contents"][0]["parts"][0]["text"] for k in c.calls]
     assert "bbbb" in sent[1] and "aaaa" not in sent[1]
     assert sent[2].rstrip().endswith("Z") or "Z" in sent[2][-50:]
     assert len(out) == 3
@@ -162,7 +164,7 @@ def test_budget_exhausted_midway_returns_none(budget):
 
 
 def _status(code):
-    return httpx.Response(code, json={"type": "error", "error": {"type": "x", "message": "m"}})
+    return httpx.Response(code, json={"error": {"code": code, "message": "m", "status": "X"}})
 
 
 def test_rate_limit_and_connection_errors_return_none(budget):
@@ -174,9 +176,9 @@ def test_rate_limit_and_connection_errors_return_none(budget):
 
 
 def test_server_error_returns_none_but_client_error_raises(budget):
-    c = FakeClient([_status(529), _status(400)])
+    c = FakeClient([_status(503), _status(400)])
     assert enrich(c, budget, POSTING) is None
-    with pytest.raises(anthropic.BadRequestError):
+    with pytest.raises(APIError):
         enrich(c, budget, POSTING)
 
 
@@ -192,14 +194,14 @@ GOOD = enrichment(["CH"]).model_dump_json()
     ("not-matching-schema", reply(None, text='{"nope": 1}')),
 ])
 def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
-    r["usage"] = {"input_tokens": 1_000_000, "output_tokens": 1_000_000}
+    r["usageMetadata"] = {"promptTokenCount": 1_000_000, "candidatesTokenCount": 1_000_000}
     b = Budget(tmp_path / "b.json", "2026-11")
     if label == "valid":
         assert enrich(FakeClient([r]), b, POSTING) is not None
     else:
         with pytest.raises(AIUnusable):
             enrich(FakeClient([r]), b, POSTING)
-    assert b.spent() == pytest.approx(0.60)
+    assert b.spent() == pytest.approx(0.50)
 
 
 @pytest.mark.parametrize("r", [
@@ -208,7 +210,7 @@ def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
     reply(None, text=""),
 ])
 def test_extract_unusable_output_raises_and_is_billed(tmp_path, r):
-    r["usage"] = {"input_tokens": 1_000_000, "output_tokens": 0}
+    r["usageMetadata"] = {"promptTokenCount": 1_000_000, "candidatesTokenCount": 0}
     b = Budget(tmp_path / "b.json", "2026-11")
     with pytest.raises(AIUnusable):
         extract_postings(FakeClient([r]), b, FIRM, "t")
@@ -248,7 +250,46 @@ def test_enrich_request_shape_and_untrusted_framing(budget):
     c = FakeClient([reply(enrichment(["CH"]))])
     enrich(c, budget, POSTING)
     kw = c.calls[0]
-    assert kw["output_config"]["effort"] == "low"
-    assert "is_internship" in kw["output_config"]["format"]["schema"]["properties"]
-    assert "untrusted" in kw["system"]
-    assert "Intern" in kw["messages"][0]["content"]
+    assert "is_internship" in kw["generationConfig"]["responseJsonSchema"]["properties"]
+    assert "untrusted" in kw["systemInstruction"]["parts"][0]["text"]
+    assert "Intern" in kw["contents"][0]["parts"][0]["text"]
+
+
+def test_blocked_prompt_is_unusable_and_billed(budget):
+    c = FakeClient([{"promptFeedback": {"blockReason": "SAFETY"},
+                     "usageMetadata": {"promptTokenCount": 1_000_000}}])
+    with pytest.raises(AIUnusable):
+        enrich(c, budget, POSTING)
+    assert budget.spent() == pytest.approx(0.10)
+
+
+def test_thinking_tokens_billed_as_output_and_thought_parts_ignored(budget):
+    r = reply(None, text=GOOD)
+    r["candidates"][0]["content"]["parts"].insert(0, {"text": "hmm", "thought": True})
+    r["usageMetadata"] = {"promptTokenCount": 0, "candidatesTokenCount": 500_000, "thoughtsTokenCount": 500_000}
+    assert enrich(FakeClient([r]), budget, POSTING) is not None
+    assert budget.spent() == pytest.approx(0.40)
+
+
+def test_api_key_sent_in_header_not_url():
+    c = FakeClient([reply(enrichment(["CH"]))])
+    seen = {}
+    orig = c._handle
+
+    def handle(request):
+        seen["key"] = request.headers.get("x-goog-api-key")
+        return orig(request)
+    c.client.http = httpx.Client(transport=httpx.MockTransport(handle))
+    enrich(c, _fresh_budget(), POSTING)
+    assert seen["key"] == "test" and "key=" not in c.urls[0]
+
+
+def _fresh_budget():
+    import tempfile
+    from pathlib import Path
+    return Budget(Path(tempfile.mkdtemp()) / "b.json", "2026-11")
+
+
+def test_missing_api_key_rejected():
+    with pytest.raises(ValueError):
+        GeminiClient("")
