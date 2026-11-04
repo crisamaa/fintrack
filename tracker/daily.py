@@ -8,12 +8,12 @@ from pathlib import Path
 
 import anthropic
 import httpx
-import yaml
 
 from tracker.ai import AIUnusable, enrich, extract_postings
 from tracker.budget import Budget
 from tracker.feeds import SourceError, fetch_feed
 from tracker.fetch import PoliteClient, text_hash
+from tracker.firms import load_firms
 from tracker.merge import FirmResult, FirmState, close_expired, merge
 from tracker.models import ALLOWED_COUNTRIES, Firm, Role, role_id
 
@@ -239,9 +239,7 @@ def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    raw = yaml.safe_load(Path("firms/firms.yaml").read_text())
-    items = raw["firms"] if isinstance(raw, dict) else raw
-    firms = [Firm.model_validate(f) for f in items]
+    firms = load_firms(Path("firms/firms.yaml"))
     polite = PoliteClient()
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30.0, follow_redirects=True,
                       event_hooks=polite.event_hooks()) as http:
