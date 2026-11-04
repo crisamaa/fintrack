@@ -8,6 +8,7 @@ from pathlib import Path
 
 import anthropic
 import httpx
+import yaml
 
 from tracker.ai import AIUnusable, enrich, extract_postings
 from tracker.budget import Budget
@@ -190,7 +191,7 @@ def _process(firm, roles, state, client, http, polite, budget, today, blocked=Fa
 
 
 def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, http,
-        polite: PoliteClient | None = None) -> None:
+        polite: PoliteClient | None = None, not_covered: list[str] | None = None) -> None:
     data_dir, site_dir = Path(data_dir), Path(site_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "data").mkdir(parents=True, exist_ok=True)
@@ -227,6 +228,7 @@ def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, 
         "firms_checked": checked,
         "firms_failed": failed,
         "firms_unread": unread,
+        "firms_not_covered": sorted(not_covered or []),
         "budget_exhausted": budget.exhausted,
         "roles": [r.model_dump(mode="json") for r in sorted(roles.values(), key=lambda r: (r.firm_id, r.title, r.id))],
     }
@@ -237,14 +239,26 @@ def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, 
         raise RunFailed("every firm failed")
 
 
+def _load_not_covered(path: Path) -> list[str]:
+    """Firms that refuse automated visits, listed for the website only. A missing file means none."""
+    if not path.exists():
+        return []
+    names = yaml.safe_load(path.read_text()) or []
+    if not isinstance(names, list):
+        raise ValueError(f"{path} must be a plain list of firm names")
+    return [str(n) for n in names]
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     firms = load_firms(Path("firms/firms.yaml"))
+    not_covered = _load_not_covered(Path("firms/blocked.yaml"))
     polite = PoliteClient()
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30.0, follow_redirects=True,
                       event_hooks=polite.event_hooks()) as http:
         try:
-            run(firms, Path("data"), Path("site"), date.today(), anthropic.Anthropic(), http, polite=polite)
+            run(firms, Path("data"), Path("site"), date.today(), anthropic.Anthropic(), http, polite=polite,
+                not_covered=not_covered)
         except RunFailed as e:
             log.error("run failed: %s", e)
             raise SystemExit(1) from e

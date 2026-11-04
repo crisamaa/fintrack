@@ -35,12 +35,19 @@ function renderStatus(data) {
     const note = el("span", "The monthly AI budget ran out, so some pages and new roles were not read. They will be picked up next month.", { class: "budget-note" });
     $("#status").append(" ", note);
   }
+  const notCovered = data.firms_not_covered || [];
   const cov = $("#coverage");
-  if (failed.length) {
-    $("#coverage-summary").textContent = `Not checked this run (${failed.length} ${failed.length === 1 ? "firm" : "firms"})`;
+  if (failed.length || notCovered.length) {
+    const bits = [];
+    if (failed.length) bits.push(`Not checked this run (${failed.length} ${failed.length === 1 ? "firm" : "firms"})`);
+    if (notCovered.length) bits.push(`Not covered (${notCovered.length} ${notCovered.length === 1 ? "firm" : "firms"})`);
+    $("#coverage-summary").textContent = bits.join(" · ");
     $("#coverage-list").textContent = failed.join(", ");
+    $("#coverage-list").hidden = !failed.length;
+    $("#coverage-blocked").hidden = !notCovered.length;
+    $("#coverage-blocked-names").textContent = notCovered.join(", ");
     cov.hidden = false;
-    cov.open = failed.length <= 5;
+    cov.open = failed.length + notCovered.length <= 5;
   }
 }
 

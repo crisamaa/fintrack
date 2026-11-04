@@ -90,7 +90,8 @@ def env(tmp_path, monkeypatch):
 def test_creates_dirs_and_writes_site_shape(env):
     env.feed = {"acme": [posting()]}
     out = env.go([firm()])
-    assert set(out) == {"generated_at", "firms_checked", "firms_failed", "firms_unread", "budget_exhausted", "roles"}
+    assert set(out) == {"generated_at", "firms_checked", "firms_failed", "firms_unread", "firms_not_covered",
+                       "budget_exhausted", "roles"}
     r = out["roles"][0]
     assert set(r) == {"id", "firm_id", "firm_name", "sector", "title", "url", "city", "countries", "season", "year",
                       "closes", "languages_required", "status", "first_seen", "last_seen", "last_checked", "closed_on"}
@@ -586,3 +587,31 @@ def test_day_30_retry_interrupted_keeps_given_up_and_listing(env, case):
         env.enrich_result = lambda p: enr()
         out = env.go([firm()], today=date(2026, 12, 8))
     assert len(out["roles"]) == 1 and out["firms_failed"] == []
+
+
+def test_firms_not_covered_is_written_and_kept_out_of_the_counts(env):
+    env.feed = {"acme": [posting()]}
+    out = env.go([firm()])
+    assert out["firms_not_covered"] == []  # default: nothing listed
+    daily.run([firm()], env.data, env.site, TODAY, client=object(), http=object(), polite=env.polite,
+              not_covered=["UBS", "EFG"])
+    out = json.loads((env.site / "data" / "roles.json").read_text())
+    assert out["firms_not_covered"] == ["EFG", "UBS"]
+    assert out["firms_failed"] == [] and out["firms_checked"] == 1 and out["firms_unread"] == 0
+
+
+def test_load_not_covered(tmp_path):
+    assert daily._load_not_covered(tmp_path / "missing.yaml") == []
+    (tmp_path / "b.yaml").write_text("- UBS\n- BNP Paribas\n")
+    assert daily._load_not_covered(tmp_path / "b.yaml") == ["UBS", "BNP Paribas"]
+    (tmp_path / "e.yaml").write_text("")
+    assert daily._load_not_covered(tmp_path / "e.yaml") == []
+    (tmp_path / "bad.yaml").write_text("a: b\n")
+    with pytest.raises(ValueError):
+        daily._load_not_covered(tmp_path / "bad.yaml")
+
+
+def test_shipped_blocked_list_parses():
+    from pathlib import Path
+    names = daily._load_not_covered(Path(__file__).parent.parent / "firms" / "blocked.yaml")
+    assert len(names) == 15 and "UBS" in names and "Neuberger Berman" in names
