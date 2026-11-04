@@ -12,8 +12,8 @@ These steps involve accounts and keys, so you do them yourself.
 1. Create a GitHub repository (public, so Pages and Actions are free).
 2. Push the `feat/europe-internship-tracker` branch and merge it into the default branch.
 3. In the repository, go to Settings > Pages and set the source to **GitHub Actions**.
-4. Create a Gemini API key at aistudio.google.com (Get API key). Set a budget alert on the linked Google Cloud
-   billing account, or stay on the free tier, so spending stays under control.
+4. Create a Gemini API key at aistudio.google.com (Get API key). The free tier needs no billing. If you use a billed key,
+   also add the `AI_MONTHLY_CAP_USD` variable described under "What it costs".
 5. Add the key as a repository secret named `GEMINI_API_KEY` (Settings > Secrets and
    variables > Actions > New repository secret).
 6. Open the Actions tab, choose **Daily run**, and click **Run workflow**. When it finishes, the site is at
@@ -35,11 +35,13 @@ runs; after that, unchanged pages are skipped and runs are short.
 ## What it costs
 
 - GitHub Actions and Pages: free for a public repository.
-- Gemini API: `gemini-3.5-flash-lite` at $0.30 per million input tokens and $2.50 per million output tokens (thinking set to minimal). A spending cap is built in:
-  `MONTHLY_CAP_USD = 5.00` in `tracker/budget.py`, and no new AI call starts once $4.90 is spent that month.
-  Spending is tracked in `data/spend.json`. Pages that have not changed since the last run are not sent to the AI
-  again, so after the first pass a normal month should cost a small fraction of the cap. Compare `data/spend.json`
-  with Google AI Studio / Cloud billing now and then.
+- Gemini API: `gemini-3.5-flash-lite` at $0.30 per million input tokens and $2.50 per million output tokens (thinking set to minimal).
+  **There is no spending cap unless you set one.** That is fine on Gemini's free tier, which costs nothing. Every
+  Daily run without a cap shows a yellow "No AI spending cap" warning on its page, with what the month would cost at
+  paid prices (tracked in `data/spend.json`).
+  **Before switching to a billed key**, add a repository variable `AI_MONTHLY_CAP_USD` (Settings > Secrets and
+  variables > Actions > Variables), for example `5`. No new AI call then starts once the month's spend is within
+  $0.10 of the cap. An invalid value stops the run before anything is spent. Also set a budget alert in Google Cloud.
 - The model is a single constant, `MODEL` in `tracker/ai.py`. Changing the model is a one-line edit; update the
   prices in `tracker/budget.py` to match.
 
