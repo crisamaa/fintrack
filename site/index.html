@@ -1,44 +1,86 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="ledger">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="color-scheme" content="light dark">
-<title>Finance internships in Switzerland and the EU/EEA</title>
+<title>Fintrack — finance internships, Switzerland &amp; EU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link id="theme-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="style.css">
+<script>
+  // Apply the saved theme before first paint.
+  try { const t = JSON.parse(localStorage.getItem("fintrack.prefs.v1"))?.theme; if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
 </head>
 <body>
-<header>
-  <h1>Finance internships in Switzerland and the EU/EEA</h1>
-  <p id="status" class="status" aria-live="polite">Loading...</p>
-  <details id="coverage" class="coverage" hidden>
-    <summary id="coverage-summary"></summary>
-    <p id="coverage-list"></p>
-    <p id="coverage-blocked" hidden><strong>Not covered:</strong> these firms block automated visits, check them by hand. <span id="coverage-blocked-names"></span></p>
-  </details>
-</header>
-<main>
-  <section id="filters" class="filters" aria-label="Filters">
-    <label class="open-only"><input type="checkbox" id="open-only" checked> Open only</label>
-    <details data-filter="countries"><summary>Country <span class="count"></span></summary><div class="options"></div></details>
-    <details data-filter="sectors"><summary>Sector <span class="count"></span></summary><div class="options"></div></details>
-    <details data-filter="seasons"><summary>Season <span class="count"></span></summary><div class="options"></div></details>
-    <details data-filter="languages"><summary>Languages <span class="count"></span></summary>
-      <div class="options"></div>
-      <p class="hint">Hides roles that need a language you have not ticked. Roles with no stated language stay visible.</p>
-    </details>
-    <button type="button" id="reset">Reset</button>
-  </section>
-  <p id="result-count" class="result-count"></p>
-  <div class="table-wrap" id="table-wrap">
-    <table id="roles">
-      <thead><tr></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <p id="message" class="message" role="status"></p>
-</main>
+<a class="skip" href="#view">Skip to content</a>
+<div class="app">
+  <nav class="rail" aria-label="Main">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">ƒ</span>fintrack</div>
+    <ul class="nav">
+      <li><a href="#discover" data-view="discover"><span>Discover</span><kbd>1</kbd><span class="nav-count" id="count-discover"></span></a></li>
+      <li><a href="#pipeline" data-view="pipeline"><span>Pipeline</span><kbd>2</kbd><span class="nav-count" id="count-pipeline"></span></a></li>
+      <li><a href="#deadlines" data-view="deadlines"><span>Deadlines</span><kbd>3</kbd><span class="nav-count" id="count-deadlines"></span></a></li>
+    </ul>
+    <div class="rail-foot">
+      <section class="coverage" id="coverage" aria-label="Data coverage"></section>
+      <fieldset class="themes">
+        <legend>Appearance</legend>
+        <label><input type="radio" name="theme" value="ledger"><span>Ledger</span></label>
+        <label><input type="radio" name="theme" value="swiss"><span>Swiss</span></label>
+        <label><input type="radio" name="theme" value="terminal"><span>Terminal</span></label>
+      </fieldset>
+      <div class="rail-actions">
+        <button type="button" class="link" id="open-shortcuts">Shortcuts <kbd>?</kbd></button>
+        <button type="button" class="link" id="export">Export</button>
+        <label class="link file-link">Import<input type="file" id="import" accept="application/json" hidden></label>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main" id="main">
+    <header class="bar">
+      <div class="bar-title">
+        <h1 id="view-title">Discover</h1>
+        <p class="bar-meta" id="view-meta" aria-live="polite"></p>
+      </div>
+      <div class="toolbar" id="toolbar">
+        <label class="search">
+          <span class="visually-hidden">Search roles</span>
+          <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.4"/></svg>
+          <input id="search" type="search" placeholder="Firm, role or city" autocomplete="off" spellcheck="false">
+          <kbd>/</kbd>
+        </label>
+        <div class="filters" id="filters"></div>
+      </div>
+    </header>
+    <section id="view" class="view" tabindex="-1" aria-live="polite" aria-busy="true">
+      <div class="state"><p class="state-title">Loading postings…</p></div>
+    </section>
+  </main>
+
+  <aside class="detail" id="detail" aria-label="Role details" hidden></aside>
+</div>
+
+<dialog id="shortcuts" class="dialog" aria-labelledby="shortcuts-title">
+  <h2 id="shortcuts-title">Keyboard</h2>
+  <dl class="keys">
+    <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Discover, Pipeline, Deadlines</dd>
+    <dt><kbd>/</kbd></dt><dd>Search</dd>
+    <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>Next / previous role</dd>
+    <dt><kbd>Enter</kbd></dt><dd>Open details</dd>
+    <dt><kbd>s</kbd></dt><dd>Shortlist or remove</dd>
+    <dt><kbd>a</kbd></dt><dd>Mark as applied</dd>
+    <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Move stage back / forward</dd>
+    <dt><kbd>o</kbd></dt><dd>Open the original ad</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Close details or clear search</dd>
+  </dl>
+  <form method="dialog"><button class="btn">Close</button></form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="app.js"></script>
 </body>
 </html>
