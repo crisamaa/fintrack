@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { visibleRoles, sortRoles, safeUrl } from "./filters.js";
+import { visibleRoles, sortRoles, safeUrl, formatDate } from "./filters.js";
 
 const role = (o) => ({
   id: "x", countries: ["CH"], sector: "banking", season: "summer",
@@ -58,4 +58,10 @@ test("safeUrl rejects javascript and data links", () => {
   assert.equal(safeUrl("not a url"), null);
   assert.equal(safeUrl(null), null);
   assert.equal(safeUrl(" JaVaScRiPt:alert(1)"), null);
+});
+test("formatDate shows date-only strings as that calendar day in any time zone", () => {
+  assert.equal(formatDate("2026-12-01"), "1 Dec 2026");
+  assert.equal(formatDate("2026-01-01"), "1 Jan 2026");
+  assert.equal(formatDate(null), null);
+  assert.equal(formatDate("garbage"), "garbage");
 });

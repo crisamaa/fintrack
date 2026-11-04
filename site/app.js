@@ -1,4 +1,4 @@
-import { visibleRoles, sortRoles, safeUrl } from "./filters.js";
+import { visibleRoles, sortRoles, safeUrl, formatDate } from "./filters.js";
 
 const SECTORS = { banking: "Banking", private_equity: "Private equity", finance: "Finance", fintech: "Fintech" };
 const SEASONS = { summer: "Summer", spring: "Spring", winter: "Winter", off_cycle: "Off-cycle", unknown: "Unknown" };
@@ -87,12 +87,6 @@ function renderHead() {
   }
 }
 
-function fmtDate(s) {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d) ? String(s) : d.toLocaleDateString("en-GB", { dateStyle: "medium" });
-}
-
 function renderRow(r) {
   const tr = el("tr");
   if (r.status !== "open") tr.className = "closed";
@@ -113,11 +107,11 @@ function renderRow(r) {
   tr.append(el("td", label(SEASONS, r.season) + (r.year ? " " + r.year : "")));
   const langs = r.languages_required || [];
   tr.append(el("td", langs.length ? langs.join(", ") : "Not stated", langs.length ? undefined : { class: "muted" }));
-  const closes = fmtDate(r.closes);
+  const closes = formatDate(r.closes);
   const c = el("td", closes || "Rolling/unknown", closes ? undefined : { class: "muted" });
   if (r.closes) c.setAttribute("data-sort", r.closes);
   tr.append(c);
-  tr.append(el("td", fmtDate(r.last_checked) || ""));
+  tr.append(el("td", formatDate(r.last_checked) || ""));
   return tr;
 }
 

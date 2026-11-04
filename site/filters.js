@@ -44,3 +44,13 @@ export function sortRoles(roles, key, direction = "asc") {
     return sign * cmp;
   });
 }
+
+// Date-only strings ("2026-12-01") are calendar days: format them in UTC so
+// viewers west of UTC do not see the day before. Full timestamps use local time.
+export function formatDate(s) {
+  if (!s) return null;
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const d = new Date(s);
+  if (isNaN(d)) return String(s);
+  return d.toLocaleDateString("en-GB", dateOnly ? { dateStyle: "medium", timeZone: "UTC" } : { dateStyle: "medium" });
+}
