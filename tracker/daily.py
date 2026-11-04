@@ -11,7 +11,7 @@ import httpx
 import yaml
 
 from tracker.ai import AIUnusable, APIError, GeminiClient, enrich, extract_postings
-from tracker.budget import Budget
+from tracker.budget import MONTHLY_CAP_USD, Budget, cap_from_env
 from tracker.feeds import SourceError, fetch_feed
 from tracker.fetch import PoliteClient, text_hash
 from tracker.firms import load_firms
@@ -193,11 +193,12 @@ def _process(firm, roles, state, client, http, polite, budget, today, blocked=Fa
 
 def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, http,
         polite: PoliteClient | None = None, not_covered: list[str] | None = None,
-        deadline_minutes: float = DEADLINE_MINUTES, clock=time.monotonic) -> None:
+        deadline_minutes: float = DEADLINE_MINUTES, clock=time.monotonic,
+        cap_usd: float | None = MONTHLY_CAP_USD) -> None:
     data_dir, site_dir = Path(data_dir), Path(site_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "data").mkdir(parents=True, exist_ok=True)
-    budget = Budget(data_dir / "spend.json", today.strftime("%Y-%m"))
+    budget = Budget(data_dir / "spend.json", today.strftime("%Y-%m"), cap_usd)
     roles = _load_roles(data_dir / "roles.json")
     states = _load_state(data_dir / "firm_state.json")
     failed: list[str] = []
@@ -262,19 +263,43 @@ def _load_not_covered(path: Path) -> list[str]:
     return [str(n) for n in names]
 
 
+def warn_uncapped(spend_path: Path, month: str) -> str:
+    """Warn on every run without a cap: a free-tier key costs nothing, but a paid key would be billed uncapped."""
+    estimate = Budget(spend_path, month, None).spent()
+    msg = (f"No AI spending cap is set. Fine for a free-tier Gemini key. If this key is billed, set the repository "
+           f"variable AI_MONTHLY_CAP_USD (e.g. 5). At paid prices this month would cost about ${estimate:.2f}.")
+    log.warning(msg)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::warning title=No AI spending cap::{msg}", flush=True)
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary, "a") as f:
+                f.write(f"### ⚠️ No AI spending cap\n\n{msg}\n")
+    return msg
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    try:
+        cap = cap_from_env(os.environ.get("AI_MONTHLY_CAP_USD"))
+    except ValueError as e:
+        log.error("%s", e)
+        raise SystemExit(1) from e
     firms = load_firms(Path("firms/firms.yaml"))
     not_covered = _load_not_covered(Path("firms/blocked.yaml"))
     polite = PoliteClient()
-    with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30.0, follow_redirects=True,
-                      event_hooks=polite.event_hooks()) as http:
-        try:
-            run(firms, Path("data"), Path("site"), date.today(), GeminiClient(os.environ.get("GEMINI_API_KEY", "")), http, polite=polite,
-                not_covered=not_covered)
-        except RunFailed as e:
-            log.error("run failed: %s", e)
-            raise SystemExit(1) from e
+    try:
+        with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30.0, follow_redirects=True,
+                          event_hooks=polite.event_hooks()) as http:
+            try:
+                run(firms, Path("data"), Path("site"), date.today(), GeminiClient(os.environ.get("GEMINI_API_KEY", "")),
+                    http, polite=polite, not_covered=not_covered, cap_usd=cap)
+            except RunFailed as e:
+                log.error("run failed: %s", e)
+                raise SystemExit(1) from e
+    finally:
+        if cap is None:
+            warn_uncapped(Path("data") / "spend.json", date.today().strftime("%Y-%m"))
 
 
 if __name__ == "__main__":

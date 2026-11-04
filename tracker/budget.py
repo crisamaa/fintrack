@@ -1,19 +1,24 @@
-"""Monthly AI spend ledger, persisted as JSON keyed by month, e.g. {"2026-11": 1.23}."""
+"""Monthly AI spend ledger, persisted as JSON keyed by month, e.g. {"2026-11": 1.23}.
+
+The cap is optional. With no cap, spending is still estimated at paid prices and recorded, so the
+daily run can warn how much a paid key would have cost; nothing is stopped.
+"""
 import json
 import math
 import os
 from pathlib import Path
 
-MONTHLY_CAP_USD = 5.00
-STOP_AT_USD = 4.90
+MONTHLY_CAP_USD = 5.00   # default when a cap is used; production reads AI_MONTHLY_CAP_USD
+STOP_MARGIN_USD = 0.10   # stop starting new calls this far below the cap
 INPUT_USD_PER_M = 0.30
 OUTPUT_USD_PER_M = 2.50
 _EPS = 1e-9
 
 
 class Budget:
-    def __init__(self, path: Path, month: str):
+    def __init__(self, path: Path, month: str, cap_usd: float | None = MONTHLY_CAP_USD):
         self.path = Path(path)
+        self.cap = cap_usd
         self.month = month
         self.exhausted = False
         self._corrupt = False
@@ -39,11 +44,13 @@ class Budget:
 
     def spent(self) -> float:
         if self._corrupt:
-            return MONTHLY_CAP_USD
+            return self.cap if self.cap is not None else 0.0
         return self._data.get(self.month, 0.0)
 
     def can_spend(self) -> bool:
-        ok = not self._corrupt and self.spent() + _EPS < STOP_AT_USD
+        if self.cap is None:
+            return True  # uncapped: the daily run warns instead
+        ok = not self._corrupt and self.spent() + _EPS < self.cap - STOP_MARGIN_USD
         if not ok:
             self.exhausted = True
         return ok
@@ -59,3 +66,16 @@ class Budget:
         tmp = self.path.with_suffix(self.path.suffix + ".tmp")
         tmp.write_text(json.dumps(self._data, indent=2, sort_keys=True))
         os.replace(tmp, self.path)
+
+
+def cap_from_env(value: str | None) -> float | None:
+    """Parse AI_MONTHLY_CAP_USD. Empty or unset means no cap; anything else must be a positive number."""
+    if value is None or not value.strip():
+        return None
+    try:
+        cap = float(value.strip())
+    except ValueError:
+        raise ValueError(f"AI_MONTHLY_CAP_USD must be a number of US dollars, got {value!r}") from None
+    if not math.isfinite(cap) or cap <= STOP_MARGIN_USD:
+        raise ValueError(f"AI_MONTHLY_CAP_USD must be more than {STOP_MARGIN_USD}, got {value!r}")
+    return cap

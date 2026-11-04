@@ -670,3 +670,46 @@ def test_never_checked_firms_first_then_oldest_with_list_order_ties(env):
     finally:
         mp.undo()
     assert seen == ["d", "e", "b", "c", "a"]
+
+
+def _main_env(tmp_path, monkeypatch, cap=None):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "firms").mkdir()
+    (tmp_path / "firms" / "firms.yaml").write_text(
+        "- {id: acme, name: Acme, sector: banking, country: CH, source: greenhouse, slug: acme}\n")
+    monkeypatch.setattr(daily, "GeminiClient", lambda key: object())
+    monkeypatch.setattr(daily, "fetch_feed", lambda f, h: [])
+    if cap is None:
+        monkeypatch.delenv("AI_MONTHLY_CAP_USD", raising=False)
+    else:
+        monkeypatch.setenv("AI_MONTHLY_CAP_USD", cap)
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    return summary
+
+
+def test_main_without_cap_warns_in_actions(tmp_path, monkeypatch, capsys):
+    summary = _main_env(tmp_path, monkeypatch)
+    daily.main()
+    out = capsys.readouterr().out
+    assert "::warning title=No AI spending cap::" in out and "AI_MONTHLY_CAP_USD" in out
+    assert "No AI spending cap" in summary.read_text()
+
+
+def test_main_with_cap_does_not_warn_and_passes_cap(tmp_path, monkeypatch, capsys):
+    summary = _main_env(tmp_path, monkeypatch, cap="5")
+    seen = {}
+    real_run = daily.run
+    monkeypatch.setattr(daily, "run", lambda *a, **kw: (seen.update(cap=kw["cap_usd"]), real_run(*a, **kw)))
+    daily.main()
+    assert seen["cap"] == 5.0
+    assert "::warning" not in capsys.readouterr().out and not summary.exists()
+
+
+def test_main_rejects_bad_cap_before_doing_anything(tmp_path, monkeypatch):
+    _main_env(tmp_path, monkeypatch, cap="five dollars")
+    monkeypatch.setattr(daily, "run", lambda *a, **kw: pytest.fail("run must not start"))
+    with pytest.raises(SystemExit) as ei:
+        daily.main()
+    assert ei.value.code == 1
