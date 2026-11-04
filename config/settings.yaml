@@ -1,0 +1,21 @@
+# Non-secret settings. Secrets and budgets that may differ per deployment come from environment variables
+# (repository secrets and variables in GitHub Actions); see docs/configuration.md.
+
+budgets:
+  ai_daily_requests: 400        # model calls per UTC day; AI_DAILY_REQUESTS overrides
+  search_provider: none         # none | gemini | brave; SEARCH_PROVIDER overrides
+  search_daily_limit: 20        # grounded searches per day; SEARCH_DAILY_LIMIT overrides
+
+limits:
+  run_minutes: 40               # stop starting new work after this long; data is still saved and exported
+  max_source_checks: 400
+  max_jobs: 300
+  discovery_candidates_per_run: 40
+  research_per_run: 3
+  max_pages_per_candidate: 4
+
+notifications:
+  digest_hour_utc: 5            # 05:00 UTC = 06:00 Swiss winter time
+  github_issue: false           # true: also open the digest as an issue in this repository
+  countries: []                 # empty = every country of interest
+  sectors: []                   # empty = all

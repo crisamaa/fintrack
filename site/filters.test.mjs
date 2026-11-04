@@ -94,3 +94,35 @@ test("stage lookup", () => {
   assert.equal(stageById("applied").rank, 1);
   assert.equal(stageById("nope"), null);
 });
+
+import { toRole, programStatus } from "./filters.js";
+
+test("toRole keeps v1 display status and the lifecycle", () => {
+  const r = toRole({ id: "x", employer_id: "e", employer: "E", status: "pending", sectors: ["m_and_a"], internship_type: "summer",
+    intake_year: 2027, closes_on: "2026-12-01", languages: ["de"], first_seen_at: "2026-11-01T05:00:00Z" });
+  assert.equal(r.status, "open");
+  assert.equal(r.lifecycle, "pending");
+  assert.equal(r.firm_name, "E");
+  assert.equal(r.season, "summer");
+  assert.equal(r.closes, "2026-12-01");
+  assert.equal(toRole({ id: "y", status: "expired" }).status, "closed");
+});
+
+test("programStatus never presents an estimate as an announcement", () => {
+  const est = { live: 0, windows: [{ intake_year: 2027, kind: "observed", opens_on: "2026-09-01" },
+    { intake_year: 2028, kind: "estimated", opens_earliest: "2027-08-15", opens_latest: "2027-09-20" }] };
+  assert.equal(programStatus(est, "2027-06-01").key, "estimated");
+  const announced = { live: 0, windows: [{ intake_year: 2028, kind: "confirmed", opens_on: "2027-09-01" }] };
+  assert.equal(programStatus(announced, "2027-06-01").key, "confirmed");
+  const open = { ...est, live: 2 };
+  assert.equal(programStatus(open, "2026-10-01").year, 2027);
+});
+
+test("visibleRoles hides excluded and dismissed unless asked, and filters eligibility", () => {
+  const a = role({ id: "a", eligibility: "eligible" }), b = role({ id: "b", excluded_reason: "not_internship" }),
+    c = role({ id: "c", dismissed: true }), d = role({ id: "d", lifecycle: "pending", eligibility: "potential" });
+  assert.deepEqual(visibleRoles([a, b, c, d], none).map((r) => r.id), ["a", "d"]);
+  assert.deepEqual(visibleRoles([a, b, c, d], { ...none, showHidden: true }).length, 4);
+  assert.deepEqual(visibleRoles([a, d], { ...none, confirmedOnly: true }).map((r) => r.id), ["a"]);
+  assert.deepEqual(visibleRoles([a, d], { ...none, eligibility: ["potential"] }).map((r) => r.id), ["d"]);
+});

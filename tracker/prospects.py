@@ -27,6 +27,9 @@ from tracker.names import registrable_domain
 
 log = logging.getLogger(__name__)
 RESEARCH_MAX_AGE = timedelta(days=120)
+MIN_SCORE = 2
+# At least one factor that is specific evidence, so being a Swiss bank alone does not make a prospect.
+STRONG = {"hired_interns_before", "recurring_program", "small_firm", "not_monitorable", "no_recruitment_channel"}
 _USEFUL_LINK = ("about", "ueber-uns", "uber-uns", "a-propos", "nosotros", "quienes", "team", "career", "karriere",
                 "carriere", "jobs", "join", "students", "graduates", "contact")
 
@@ -45,7 +48,8 @@ def score_all(ctx: Ctx) -> int:
         for e in rows:
             reasons = _reasons(ctx, e)
             score = sum(r["points"] for r in reasons)
-            if score <= 0:
+            if score < MIN_SCORE or not {r["factor"] for r in reasons} & STRONG:
+                ctx.conn.execute("DELETE FROM prospects WHERE employer_id = ? AND status = 'suggested'", (e["id"],))
                 continue
             conn.execute("INSERT INTO prospects (employer_id, status, score, reasons, updated_at) VALUES "
                          "(?, 'suggested', ?, ?, ?) ON CONFLICT(employer_id) DO UPDATE SET score = excluded.score, "
@@ -72,15 +76,13 @@ def _reasons(ctx: Ctx, e) -> list[dict]:
     sectors = [r["sector"] for r in conn.execute("SELECT sector FROM employer_sectors WHERE employer_id = ?",
                                                   (e["id"],))]
     wanted = ctx.config.notify_sectors
-    if sectors and (not wanted or set(sectors) & set(wanted)):
-        out.append({"factor": "sector_fit", "points": 1, "detail": ", ".join(sectors[:3])})
+    if wanted and set(sectors) & set(wanted):
+        out.append({"factor": "sector_fit", "points": 1, "detail": ", ".join(s for s in sectors if s in wanted)})
     if e["hq_country"] in ("CH", "PE"):
         out.append({"factor": "home_market", "points": 1, "detail": f"based in {e['hq_country']}"})
     if e["access_note"]:
         out.append({"factor": "not_monitorable", "points": 1,
                     "detail": "its careers site cannot be monitored automatically; direct contact is the way in"})
-    if e["website"]:
-        out.append({"factor": "researchable", "points": 1, "detail": "official website known"})
     has_source = one(conn, "SELECT 1 FROM sources WHERE employer_id = ? AND enabled = 1", (e["id"],))
     if not has_source:
         out.append({"factor": "no_recruitment_channel", "points": 1,

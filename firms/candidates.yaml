@@ -1,0 +1,15 @@
+# Names for discovery to verify and, if they are finance employers, to add with their recruitment sources.
+# Each needs the firm's official website: discovery checks that the site names the firm before trusting it.
+# Peruvian financial institutions (official sites as known on 2026-11-04; discovery re-verifies each one).
+- {name: Banco de Crédito del Perú, website: "https://www.viabcp.com", country: PE, sector: banking}
+- {name: Credicorp Capital, website: "https://www.credicorpcapital.com", country: PE, sector: investment_banking}
+- {name: Interbank, website: "https://interbank.pe", country: PE, sector: banking}
+- {name: BBVA Perú, website: "https://www.bbva.pe", country: PE, sector: banking}
+- {name: Scotiabank Perú, website: "https://www.scotiabank.com.pe", country: PE, sector: banking}
+- {name: Banco Central de Reserva del Perú, website: "https://www.bcrp.gob.pe", country: PE, sector: other_finance}
+- {name: Superintendencia de Banca, Seguros y AFP, website: "https://www.sbs.gob.pe", country: PE, sector: other_finance}
+- {name: Bolsa de Valores de Lima, website: "https://www.bvl.com.pe", country: PE, sector: sales_trading}
+- {name: Kallpa Securities SAB, website: "https://www.kallpasab.com", country: PE, sector: sales_trading}
+- {name: Rímac Seguros, website: "https://www.rimac.com", country: PE, sector: other_finance}
+- {name: Pacífico Seguros, website: "https://www.pacifico.com.pe", country: PE, sector: other_finance}
+- {name: Mibanco, website: "https://www.mibanco.com.pe", country: PE, sector: banking}

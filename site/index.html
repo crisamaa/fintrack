@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Fintrack — finance internships, Switzerland &amp; EU</title>
+<title>Fintrack — finance internships</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link id="theme-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -21,8 +21,12 @@
     <div class="brand"><span class="brand-mark" aria-hidden="true">ƒ</span>fintrack</div>
     <ul class="nav">
       <li><a href="#discover" data-view="discover"><span>Discover</span><kbd>1</kbd><span class="nav-count" id="count-discover"></span></a></li>
-      <li><a href="#pipeline" data-view="pipeline"><span>Pipeline</span><kbd>2</kbd><span class="nav-count" id="count-pipeline"></span></a></li>
-      <li><a href="#deadlines" data-view="deadlines"><span>Deadlines</span><kbd>3</kbd><span class="nav-count" id="count-deadlines"></span></a></li>
+      <li><a href="#programs" data-view="programs"><span>Programs</span><kbd>2</kbd><span class="nav-count" id="count-programs"></span></a></li>
+      <li><a href="#firms" data-view="firms"><span>Firms</span><kbd>3</kbd><span class="nav-count" id="count-firms"></span></a></li>
+      <li><a href="#outreach" data-view="outreach"><span>Outreach</span><kbd>4</kbd><span class="nav-count" id="count-outreach"></span></a></li>
+      <li><a href="#pipeline" data-view="pipeline"><span>Pipeline</span><kbd>5</kbd><span class="nav-count" id="count-pipeline"></span></a></li>
+      <li><a href="#deadlines" data-view="deadlines"><span>Deadlines</span><kbd>6</kbd><span class="nav-count" id="count-deadlines"></span></a></li>
+      <li><a href="#sources" data-view="sources"><span>Sources</span><kbd>7</kbd><span class="nav-count" id="count-sources"></span></a></li>
     </ul>
     <div class="rail-foot">
       <section class="coverage" id="coverage" aria-label="Data coverage"></section>
@@ -33,6 +37,7 @@
         <label><input type="radio" name="theme" value="terminal"><span>Terminal</span></label>
       </fieldset>
       <div class="rail-actions">
+        <a class="link" href="#profile" data-view="profile" id="open-profile">Profile</a>
         <button type="button" class="link" id="open-shortcuts">Shortcuts <kbd>?</kbd></button>
         <button type="button" class="link" id="export">Export</button>
         <label class="link file-link">Import<input type="file" id="import" accept="application/json" hidden></label>
@@ -50,7 +55,7 @@
         <label class="search">
           <span class="visually-hidden">Search roles</span>
           <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.4"/></svg>
-          <input id="search" type="search" placeholder="Firm, role or city" autocomplete="off" spellcheck="false">
+          <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false">
           <kbd>/</kbd>
         </label>
         <div class="filters" id="filters"></div>
@@ -67,7 +72,7 @@
 <dialog id="shortcuts" class="dialog" aria-labelledby="shortcuts-title">
   <h2 id="shortcuts-title">Keyboard</h2>
   <dl class="keys">
-    <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Discover, Pipeline, Deadlines</dd>
+    <dt><kbd>1</kbd>–<kbd>7</kbd></dt><dd>Discover, Programs, Firms, Outreach, Pipeline, Deadlines, Sources</dd>
     <dt><kbd>/</kbd></dt><dd>Search</dd>
     <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>Next / previous role</dd>
     <dt><kbd>Enter</kbd></dt><dd>Open details</dd>
@@ -75,6 +80,7 @@
     <dt><kbd>a</kbd></dt><dd>Mark as applied</dd>
     <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Move stage back / forward</dd>
     <dt><kbd>o</kbd></dt><dd>Open the original ad</dd>
+    <dt><kbd>x</kbd></dt><dd>Not interested / undo</dd>
     <dt><kbd>Esc</kbd></dt><dd>Close details or clear search</dd>
   </dl>
   <form method="dialog"><button class="btn">Close</button></form>

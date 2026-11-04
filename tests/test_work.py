@@ -298,7 +298,7 @@ def test_prospect_is_scored_with_reasons_and_researched_with_grounded_notes():
     assert prospects.score_all(ctx) == 1
     p = dict(one(ctx.conn, "SELECT * FROM prospects"))
     factors = {r["factor"] for r in json.loads(p["reasons"])}
-    assert {"small_firm", "home_market", "researchable", "no_recruitment_channel"} <= factors
+    assert {"small_firm", "home_market", "no_recruitment_channel"} <= factors
     prospects.research_due(ctx)
     work.drain(ctx, ["research"])
     notes = [(r["kind"], r["source_url"]) for r in ctx.conn.execute("SELECT * FROM employer_intel ORDER BY kind")]
@@ -354,3 +354,20 @@ def test_audit_without_benchmark_reports_nulls_not_numbers(tmp_path):
     m = coverage.audit(ctx, tmp_path / "missing.yaml")["metrics"]
     assert m["discovery_recall"] is None and m["discovery_precision"] is None
     assert "no verified opportunities" in m["notes"]["discovery_recall"]
+
+
+def test_same_name_abroad_is_a_subsidiary_not_the_same_employer():
+    from tracker import entities
+    ctx = make_ctx()
+    employer(ctx, "bbva", "BBVA", website="https://www.bbva.com", country="ES")
+    assert entities.resolve(ctx.conn, "BBVA Perú", country="PE") is None
+    assert entities.resolve(ctx.conn, "BBVA S.A.", country="ES") == "bbva"
+    assert entities.parent_candidate(ctx.conn, "BBVA Perú", "PE") == "bbva"
+
+
+def test_generic_firm_is_not_a_prospect():
+    ctx = make_ctx()
+    employer(ctx)
+    source(ctx)
+    prospects.score_all(ctx)
+    assert one(ctx.conn, "SELECT COUNT(*) FROM prospects")[0] == 0

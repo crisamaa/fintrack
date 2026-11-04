@@ -18,3 +18,9 @@ def test_matches(t):
 ])
 def test_rejects(t):
     assert not looks_like_internship(t)
+
+
+@pytest.mark.parametrize("title", ["Working Student Risk (m/w/d)", "Practicante de Trading 2027", "Becaria Finanzas",
+                                   "Spring Week 2027", "Insight Week Investment Banking"])
+def test_v2_multilingual_titles(title):
+    assert looks_like_internship(title)

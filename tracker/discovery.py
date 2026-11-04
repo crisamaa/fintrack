@@ -209,6 +209,9 @@ def _process(ctx: Ctx, c: dict) -> str:
     eid = entities.register_employer(ctx.conn, ctx.now, name=c["name"], discovered_via=c["origin"].split(":")[0],
                                      website=website, country=countries[0] if countries else None, sectors=sectors,
                                      sector_method=method, evidence=evidence, size_hint=size)
+    parent = entities.parent_candidate(ctx.conn, c["name"], countries[0] if countries else None)
+    if parent and parent != eid:
+        ctx.conn.execute("UPDATE employers SET parent_id = ? WHERE id = ?", (parent, eid))
     for country in countries[1:]:
         ctx.conn.execute("INSERT OR IGNORE INTO employer_locations VALUES (?, ?, '', ?)", (eid, country, method))
     for ref, display in boards:

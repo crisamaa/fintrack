@@ -1,0 +1,28 @@
+# Coverage benchmark (docs/coverage.md). Written by a person, never by the tracker.
+#
+# employers:      firms the tracker should cover, used for the source-coverage metric
+# opportunities:  internships a person verified by hand on the employer's own site, with the date; the audit
+#                 checks whether the tracker found each one and classifies every miss
+# labels:         relevance judgements on surfaced opportunity ids, for precision
+#
+# It starts with the employer list only. Recall and precision stay "no data" until verified postings and labels
+# are added; nothing is estimated.
+version: 2026-11-start
+employers:
+  - {name: UBS, category: large_bank, country: CH}
+  - {name: Julius Baer, category: private_bank, country: CH}
+  - {name: Vontobel, category: private_bank, country: CH}
+  - {name: Lombard Odier, category: private_bank, country: CH}
+  - {name: Pictet, category: private_bank, country: CH}
+  - {name: Zürcher Kantonalbank, category: cantonal_bank, country: CH}
+  - {name: Partners Group, category: private_equity, country: CH}
+  - {name: Banque Cantonale Vaudoise, category: cantonal_bank, country: CH}
+  - {name: Edmond de Rothschild, category: private_bank, country: CH}
+  - {name: Sygnum Bank, category: fintech, country: CH}
+  - {name: Banco de Crédito del Perú, category: large_bank, country: PE}
+  - {name: Credicorp Capital, category: investment_bank, country: PE}
+  - {name: Interbank, category: large_bank, country: PE}
+  - {name: BBVA Perú, category: large_bank, country: PE}
+  - {name: Kallpa Securities SAB, category: broker, country: PE}
+opportunities: []
+labels: []

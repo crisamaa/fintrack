@@ -43,6 +43,8 @@ def resolve(conn: sqlite3.Connection, name: str | None, *, website: str | None =
     rows = conn.execute("SELECT id FROM employers WHERE name_key = ? AND status = 'active' UNION "
                         "SELECT employer_id FROM employer_aliases a JOIN employers e ON e.id = a.employer_id "
                         "WHERE a.alias_key = ? AND e.status = 'active'", (key, key)).fetchall()
+    # Same name in another country is a subsidiary, not the same employer ("BBVA Perú" vs "BBVA" in Spain).
+    rows = [r for r in rows if _country_compatible(conn, r[0], country)]
     if len(rows) == 1:
         return rows[0][0]
     if len(rows) > 1:
@@ -51,6 +53,22 @@ def resolve(conn: sqlite3.Connection, name: str | None, *, website: str | None =
                if same_firm(name, r["name"]) and (not country or not r["hq_country"] or r["hq_country"] == country
                                                   or _has_location(conn, r["id"], country))]
     return matches[0]["id"] if len(matches) == 1 else None
+
+
+def _country_compatible(conn, employer_id: str, country: str | None) -> bool:
+    if not country:
+        return True
+    row = one(conn, "SELECT hq_country FROM employers WHERE id = ?", (employer_id,))
+    return not row["hq_country"] or row["hq_country"] == country or _has_location(conn, employer_id, country)
+
+
+def parent_candidate(conn: sqlite3.Connection, name: str, country: str | None) -> str | None:
+    """An employer with the same identifying name based in another country: the likely parent group."""
+    key = name_key(name)
+    rows = conn.execute("SELECT id FROM employers WHERE name_key = ? AND status = 'active' AND parent_id IS NULL",
+                        (key,)).fetchall()
+    rows = [r for r in rows if country and not _country_compatible(conn, r["id"], country)]
+    return rows[0]["id"] if len(rows) == 1 else None
 
 
 def _has_location(conn, employer_id: str, country: str) -> bool:
