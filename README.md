@@ -22,14 +22,39 @@ and outreach to firms that advertise nothing.
 | Sources | source health, AI usage and spend, search, discovery, coverage metrics and gaps |
 | Profile | your eligibility profile and preferences (private, in this browser) |
 
-## Setup (owner)
+## The website
+
+**https://crisamaa.github.io/fintrack/** (refresh with Ctrl/Cmd+Shift+R if it looks out of date).
+
+It updates by itself: the **Tracker run** workflow reads the job boards of every tracked firm six times a day
+(01:00, 05:00, 09:00, 13:00, 17:00 and 21:00 UTC), commits the data and redeploys the site. You do not need to
+start anything. The firm list and its boards are already in the repository (`firms/firms.yaml`).
+
+The first runs fill the site gradually: each run stops starting new work after 40 minutes, and the next run carries
+on where it left off. Until a source has been checked, the Sources view lists it as "Not checked yet".
+
+## Setup (owner, once)
 
 1. Settings → Pages: source **GitHub Actions**.
 2. Create a Gemini API key (aistudio.google.com) and add it as the repository secret `GEMINI_API_KEY`. Before using a
    billed key, add the variable `AI_MONTHLY_CAP_USD` (e.g. `5`). See [docs/configuration.md](docs/configuration.md).
-3. Actions → **Tracker run** → Run workflow. The site is then at `https://<user>.github.io/<repository>/`.
+   Without a key, job boards are still read; only the AI steps wait.
+3. Optional: start the first run now instead of waiting for the schedule: Actions → **Tracker run** → **Run
+   workflow**, leave every box empty, click **Run workflow**.
 4. Open **Profile** on the site and enter your work rights (tick Confirmed only for what you have verified),
-   degree, graduation year and languages.
+   degree, graduation year and languages. This stays in your browser; use **Export** in the sidebar to back it up.
+
+## Running it by hand
+
+Actions → **Tracker run** → **Run workflow**. Leave everything empty for a normal run. The boxes are for occasional
+jobs:
+
+| Box | Use it to |
+| --- | --- |
+| Steps to run | run only part of the process, e.g. `collect,export` (empty = everything) |
+| Build the digest now | produce today's summary now instead of at 05:00 UTC |
+| Import a posting or job-board URL | add a posting you found yourself (a university newsletter, a careers fair, LinkedIn) that the tracker does not read on its own |
+| Research one firm | research a firm for outreach now, by its id (the last part of its address in the Firms view, e.g. `#firms/vontobel` → `vontobel`) |
 
 Adding a firm by hand: add it to `firms/firms.yaml` (format unchanged from v1; optional `sectors`, `website`,
 `priority`, `enabled`), or a name and website to `firms/candidates.yaml` for discovery to verify.
