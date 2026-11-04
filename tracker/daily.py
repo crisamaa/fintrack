@@ -58,16 +58,23 @@ class Outcome:
     errors: list = field(default_factory=list)
 
 
+def _is_account_error(exc: BaseException) -> bool:
+    """Client errors that are about the account or request setup, not the posting: never a strike."""
+    if isinstance(exc, anthropic.APIStatusError) and not _is_strike(exc):
+        return True
+    return False
+
+
 def _is_strike(exc: BaseException) -> bool:
-    """Billed-but-unusable replies and AI 4xx count toward giving up; nothing else does."""
-    return isinstance(exc, (AIUnusable, anthropic.APIStatusError))
+    """Billed-but-unusable replies and input-specific 400/413 count toward giving up; nothing else does."""
+    if isinstance(exc, AIUnusable):
+        return True
+    if isinstance(exc, anthropic.APIStatusError) and exc.status_code in (400, 413):
+        return "credit balance" not in str(exc).lower()
+    return False
 
 
-def _is_auth(exc: BaseException) -> bool:
-    return isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError))
-
-
-def _enrich_new(client, budget, firm, postings, roles, state, today):
+def _enrich_new(client, budget, firm, postings, roles, state, today, blocked=False):
     """Enrich postings not seen before.
 
     Returns (accepted enrichments, state, all_done, transient, errors). Strike errors are counted against the
@@ -87,9 +94,17 @@ def _enrich_new(client, budget, firm, postings, roles, state, today):
             if (today - given_up[rid]).days < GIVE_UP_RETRY_DAYS:
                 continue
             del given_up[rid]
+        if blocked:  # an account error earlier in this run: no more AI calls
+            all_done, transient = False, True
+            break
         try:
             e = enrich(client, budget, p)
         except Exception as exc:
+            if _is_account_error(exc):
+                log.error("firm %s: AI account error", firm.id, exc_info=exc)
+                errors.append(exc)
+                all_done = False
+                break  # no strike, no state change for this role
             if not _is_strike(exc):
                 raise
             log.warning("firm %s: AI error on %s", firm.id, p.url, exc_info=exc)
@@ -98,9 +113,8 @@ def _enrich_new(client, budget, firm, postings, roles, state, today):
             if failures[rid] >= MAX_AI_FAILURES:
                 given_up[rid] = today
                 del failures[rid]
-            if _is_auth(exc):
-                all_done = False
-                break
+            else:
+                all_done = False  # still pending: keep re-reading until it succeeds or is given up
             continue
         if e is None:
             all_done = False
@@ -119,7 +133,7 @@ def _enrich_new(client, budget, firm, postings, roles, state, today):
     return accepted, new_state, all_done, transient, errors
 
 
-def _process(firm, roles, state, client, http, polite, budget, today):
+def _process(firm, roles, state, client, http, polite, budget, today, blocked=False):
     """Returns (roles, state, Outcome)."""
     new_hash = None
     if firm.source == "page":
@@ -130,12 +144,13 @@ def _process(firm, roles, state, client, http, polite, budget, today):
         if h == state.gave_up_hash:
             return roles, state, Outcome(listed=True)  # still failing on this exact page: no AI call
         retry_due = any((today - d).days >= GIVE_UP_RETRY_DAYS for d in state.given_up.values())
-        if h == state.hash and not retry_due:
+        if h == state.hash and not retry_due and not state.role_failures:
             result = FirmResult(firm_id=firm.id, status="unchanged", postings=[])
             roles, state = merge(roles, result, firm, state, {}, today)
             return roles, state, Outcome(read=True, listed=bool(state.given_up))
-        if not budget.can_spend():
+        if blocked or not budget.can_spend():
             return roles, state, Outcome()
+        before = state
         update = {"gave_up_hash": None}
         if h != state.hash:
             update["given_up"] = {}  # the page changed: give given-up postings another chance
@@ -143,6 +158,9 @@ def _process(firm, roles, state, client, http, polite, budget, today):
         try:
             postings = extract_postings(client, budget, firm, text)
         except Exception as exc:
+            if _is_account_error(exc):
+                log.error("firm %s: AI account error reading page", firm.id, exc_info=exc)
+                return roles, before, Outcome(listed=True, errors=[exc])
             if not _is_strike(exc):
                 raise
             log.warning("firm %s: AI error reading page", firm.id, exc_info=exc)
@@ -160,7 +178,7 @@ def _process(firm, roles, state, client, http, polite, budget, today):
         postings = fetch_feed(firm, http)
 
     enrichments, state, all_done, transient, errors = _enrich_new(
-        client, budget, firm, postings, roles, state, today)
+        client, budget, firm, postings, roles, state, today, blocked)
     result = FirmResult(firm_id=firm.id, status="ok", postings=postings)
     roles, state = merge(roles, result, firm, state, enrichments, today)
     if new_hash is not None and all_done:
@@ -180,18 +198,18 @@ def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, 
     states = _load_state(data_dir / "firm_state.json")
     failed: list[str] = []
     checked = unread = 0
-    auth_error = False
+    account_error = False
 
     for firm in firms:
         state = states.get(firm.id, FirmState())
         try:
             if firm.source == "page" and polite is None:
                 polite = PoliteClient()
-            roles, state, out = _process(firm, roles, state, client, http, polite, budget, today)
+            roles, state, out = _process(firm, roles, state, client, http, polite, budget, today, account_error)
         except Exception as exc:
             log.exception("firm %s failed", firm.id)
             out = Outcome(listed=True, errors=[exc])
-        auth_error = auth_error or any(_is_auth(e) for e in out.errors)
+        account_error = account_error or any(_is_account_error(e) for e in out.errors)
         states[firm.id] = state
         if out.listed:
             failed.append(firm.name)
@@ -212,8 +230,8 @@ def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, 
         "roles": [r.model_dump(mode="json") for r in sorted(roles.values(), key=lambda r: (r.firm_id, r.title, r.id))],
     }
     _write_json(site_dir / "data" / "roles.json", result)
-    if auth_error:
-        raise RunFailed("AI authentication failed; check ANTHROPIC_API_KEY")
+    if account_error:
+        raise RunFailed("AI account error (key, permissions or credit balance); nothing new was enriched")
     if firms and len(failed) == len(firms):
         raise RunFailed("every firm failed")
 

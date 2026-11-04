@@ -362,7 +362,8 @@ def test_auth_error_exits_nonzero_after_saving(env):
     env.feed = {"bad": [posting("bad")], "acme": [posting()]}
     env.enrich_result = lambda p: (_ for _ in ()).throw(_bad(401)) if p.firm_id == "bad" else enr()
     out = env.go([firm("bad"), firm("acme")])
-    assert env.exit_failed and len(out["roles"]) == 1  # site data still written
+    assert env.exit_failed and out["roles"] == []  # site data written; no further AI calls after the bad key
+    assert env.enrich_calls == ["https://bad.test/1"]
 
 
 def test_every_firm_failing_exits_nonzero(env):
@@ -456,3 +457,79 @@ def test_budget_file_and_month_key(env):
     env.feed = {"acme": [posting()]}
     env.go([firm()])
     assert daily.Budget(env.data / "spend.json", "2026-11").spent() == 0.0
+
+
+def _api(code, msg="x"):
+    req = httpx.Request("POST", "https://api.test")
+    return anthropic.APIStatusError(msg, response=httpx.Response(code, request=req), body=None)
+
+
+def test_unusable_posting_on_unchanged_page_reaches_three_strikes_and_stays_listed(env):
+    f = firm(source="page")
+    env.extract_result = [posting()]
+    env.enrich_result = _raise(AIUnusable("bad"))
+    for d in (4, 5, 6):
+        out = env.go([f], today=date(2026, 11, d))
+        assert out["firms_failed"] == ["Acme"]
+    assert len(env.enrich_calls) == 3 and env.extract_calls == 3
+    out = env.go([f], today=date(2026, 11, 7))
+    assert len(env.enrich_calls) == 3 and out["firms_failed"] == ["Acme"]
+    st = json.loads((env.data / "firm_state.json").read_text())["acme"]
+    assert len(st["given_up"]) == 1 and st["role_failures"] == {}
+
+
+def test_day_30_retry_gets_three_tries_and_stays_listed(env):
+    f = firm(source="page")
+    env.extract_result = [posting()]
+    env.enrich_result = _raise(AIUnusable("bad"))
+    for d in (4, 5, 6):
+        env.go([f], today=date(2026, 11, d))
+    assert len(env.enrich_calls) == 3
+    for i, day in enumerate((date(2026, 12, 6), date(2026, 12, 7), date(2026, 12, 8))):
+        out = env.go([f], today=day)
+        assert out["firms_failed"] == ["Acme"] and len(env.enrich_calls) == 4 + i
+    out = env.go([f], today=date(2026, 12, 9))
+    assert len(env.enrich_calls) == 6 and out["firms_failed"] == ["Acme"]
+
+
+@pytest.mark.parametrize("err", [_api(401), _api(403), _api(404), _api(400, "Your credit balance is too low")])
+def test_account_errors_never_strike_and_roles_appear_after_fix(env, err):
+    env.feed = {"acme": [posting()]}
+    env.enrich_result = _raise(err)
+    for d in (4, 5, 6):
+        out = env.go([firm()], today=date(2026, 11, d))
+        assert env.exit_failed and out["roles"] == []
+        env.exit_failed = False
+    st = json.loads((env.data / "firm_state.json").read_text())["acme"]
+    assert st["given_up"] == {} and st["role_failures"] == {} and st["rejected"] == []
+    env.enrich_result = lambda p: enr()
+    out = env.go([firm()], today=date(2026, 11, 7))
+    assert len(out["roles"]) == 1 and not env.exit_failed
+
+
+def test_account_error_on_page_extraction_is_not_a_strike(env):
+    f = firm(source="page")
+    env.extract_result = _raise_budget(_api(401))
+    for d in (4, 5, 6, 7):
+        env.go([f], today=date(2026, 11, d))
+    assert env.extract_calls == 4 and env.exit_failed
+    st = json.loads((env.data / "firm_state.json").read_text())["acme"]
+    assert st["gave_up_hash"] is None and st["fail_count"] == 0
+
+
+def test_account_error_stops_ai_but_feeds_still_read(env):
+    env.feed = {"bad": [posting("bad")], "acme": [posting()]}
+    env.enrich_result = _raise(_api(401))
+    out = env.go([firm("bad"), firm("acme")])
+    assert env.enrich_calls == ["https://bad.test/1"] and env.exit_failed and out["roles"] == []
+    st = json.loads((env.data / "firm_state.json").read_text())
+    assert "acme" in st
+
+
+def test_input_specific_413_is_a_strike(env):
+    env.feed = {"acme": [posting()]}
+    env.enrich_result = _raise(_api(413))
+    for d in (4, 5, 6):
+        env.go([firm()], today=date(2026, 11, d))
+    st = json.loads((env.data / "firm_state.json").read_text())["acme"]
+    assert len(st["given_up"]) == 1 and st["role_failures"] == {}
