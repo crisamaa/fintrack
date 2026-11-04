@@ -54,3 +54,55 @@ export function formatDate(s) {
   if (isNaN(d)) return String(s);
   return d.toLocaleDateString("en-GB", dateOnly ? { dateStyle: "medium", timeZone: "UTC" } : { dateStyle: "medium" });
 }
+
+// Free-text search over firm, title and city. Every word must match somewhere.
+export function searchRoles(roles, query) {
+  const words = String(query || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/\s+/).filter(Boolean);
+  if (words.length === 0) return roles;
+  return roles.filter((r) => {
+    const hay = [r.firm_name, r.title, r.city, ...(r.countries || [])].join(" ").toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "");
+    return words.every((w) => hay.includes(w));
+  });
+}
+
+// Whole calendar days from `today` (a "YYYY-MM-DD" string) to a date-only string. Null when either is missing.
+export function daysUntil(dateStr, today) {
+  if (!dateStr || !today) return null;
+  const a = Date.parse(String(today).slice(0, 10) + "T00:00:00Z");
+  const b = Date.parse(String(dateStr).slice(0, 10) + "T00:00:00Z");
+  if (isNaN(a) || isNaN(b)) return null;
+  return Math.round((b - a) / 86_400_000);
+}
+
+// "past" | "urgent" (0-7 days) | "soon" (8-21) | "later" | null
+export function urgency(days) {
+  if (days === null || days === undefined) return null;
+  if (days < 0) return "past";
+  if (days <= 7) return "urgent";
+  if (days <= 21) return "soon";
+  return "later";
+}
+
+// Application stages, in order. `rank` drives the progress marks; closed-out stages end the pipeline.
+export const STAGES = [
+  { id: "saved", label: "Shortlisted", rank: 0 },
+  { id: "applied", label: "Applied", rank: 1 },
+  { id: "test", label: "Online test", rank: 2 },
+  { id: "interview", label: "Interviews", rank: 3 },
+  { id: "final", label: "Final round", rank: 4 },
+  { id: "offer", label: "Offer", rank: 5, closed: true },
+  { id: "rejected", label: "Rejected", rank: -1, closed: true },
+  { id: "withdrawn", label: "Withdrawn", rank: -1, closed: true },
+];
+export const stageById = (id) => STAGES.find((s) => s.id === id) || null;
+
+// Group deadlines into agenda buckets relative to today.
+export function deadlineBucket(days) {
+  if (days === null) return "No closing date";
+  if (days < 0) return "Closed";
+  if (days <= 6) return "This week";
+  if (days <= 13) return "Next week";
+  if (days <= 30) return "Within a month";
+  return "Later";
+}

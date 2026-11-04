@@ -65,3 +65,32 @@ test("formatDate shows date-only strings as that calendar day in any time zone",
   assert.equal(formatDate(null), null);
   assert.equal(formatDate("garbage"), "garbage");
 });
+
+import { searchRoles, daysUntil, urgency, deadlineBucket, stageById } from "./filters.js";
+
+test("search matches every word across firm, title and city, ignoring accents", () => {
+  const rs = [role({ id: "a", firm_name: "Banque Cantonale de Genève", title: "Stage Crédit", city: "Genève" }),
+    role({ id: "b", firm_name: "UBS", title: "Summer Analyst", city: "Zurich" })];
+  assert.deepEqual(searchRoles(rs, "geneve credit").map((r) => r.id), ["a"]);
+  assert.deepEqual(searchRoles(rs, "  ").map((r) => r.id), ["a", "b"]);
+  assert.deepEqual(searchRoles(rs, "ubs paris"), []);
+});
+test("daysUntil counts calendar days and handles missing values", () => {
+  assert.equal(daysUntil("2026-11-11", "2026-11-04"), 7);
+  assert.equal(daysUntil("2026-11-03", "2026-11-04"), -1);
+  assert.equal(daysUntil(null, "2026-11-04"), null);
+});
+test("urgency and buckets", () => {
+  assert.equal(urgency(-1), "past");
+  assert.equal(urgency(0), "urgent");
+  assert.equal(urgency(8), "soon");
+  assert.equal(urgency(40), "later");
+  assert.equal(urgency(null), null);
+  assert.equal(deadlineBucket(3), "This week");
+  assert.equal(deadlineBucket(10), "Next week");
+  assert.equal(deadlineBucket(null), "No closing date");
+});
+test("stage lookup", () => {
+  assert.equal(stageById("applied").rank, 1);
+  assert.equal(stageById("nope"), null);
+});
