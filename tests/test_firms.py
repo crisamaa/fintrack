@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from tracker.firms import load_firms, make_id, name_key, same_firm
-from tracker.models import ALLOWED_COUNTRIES
+from tracker.firms import load_firms
+from tracker.names import make_id, name_key, registrable_domain, same_firm
+from tracker.taxonomy import COUNTRIES_OF_INTEREST as ALLOWED_COUNTRIES
 
 COMMITTED = Path(__file__).parent.parent / "firms" / "firms.yaml"
 MIN_FIRMS = 150
@@ -63,6 +64,14 @@ def test_country_outside_allowed_rejected(tmp_path):
         load_firms(write(tmp_path, "- {id: a, name: A, sector: banking, country: US, source: greenhouse, slug: a}\n"))
 
 
+def test_peru_and_uk_are_allowed_and_taxonomy_sectors_accepted(tmp_path):
+    firms = load_firms(write(tmp_path, "- {id: a, name: A, sector: investment_banking, sectors: [m_and_a], "
+                                       "country: PE, source: page, careers_url: 'https://a.pe'}\n"
+                                       "- {id: b, name: B, sector: finance, country: GB, source: lever, slug: b}\n"))
+    assert firms[0].all_sectors() == ["investment_banking", "m_and_a"]
+    assert firms[1].all_sectors() == ["asset_management", "wealth_management"]
+
+
 def test_id_must_be_lowercase_slug(tmp_path):
     with pytest.raises(ValueError, match="id"):
         load_firms(write(tmp_path, "- {id: Acme Bank, name: A, sector: banking, country: CH, source: page, careers_url: 'https://a.ch'}\n"))
@@ -116,3 +125,10 @@ def test_name_key_folds_accents_and_legal_forms():
 ])
 def test_make_id_is_a_stable_lowercase_slug(name, expected):
     assert make_id(name) == expected
+
+
+@pytest.mark.parametrize("url,domain", [("https://careers.ubs.com/x", "ubs.com"), ("www.viabcp.com", "viabcp.com"),
+                                        ("https://www.bcp.com.pe/a", "bcp.com.pe"), ("http://10.0.0.1/", None),
+                                        ("https://jobs.example.co.uk/", "example.co.uk")])
+def test_registrable_domain(url, domain):
+    assert registrable_domain(url) == domain

@@ -1,6 +1,6 @@
 [project]
-name = "europe-internship-tracker"
-version = "0.1.0"
+name = "fintrack"
+version = "2.0.0"
 requires-python = ">=3.12"
 dependencies = [
     "httpx",
@@ -12,10 +12,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "respx"]
+dev = ["pytest", "respx", "pyflakes"]
 
 [tool.setuptools]
-packages = ["tracker"]
+packages = ["tracker", "tracker.connectors"]
+
+[tool.setuptools.package-data]
+tracker = ["migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

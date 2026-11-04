@@ -1,0 +1,130 @@
+name: Tracker run
+
+# One workflow for everything scheduled. The tracker decides inside each run what is due: each source has its
+# own next-check time, discovery and audits have their own cadence, and the digest is built at 05:00 UTC.
+on:
+  schedule:
+    - cron: "0 1,5,9,13,17,21 * * *"
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: "Steps to run (comma-separated; empty = all)"
+        required: false
+        default: ""
+      digest:
+        description: "Build the digest now"
+        type: boolean
+        default: false
+      lead_url:
+        description: "Import a posting or job-board URL you came across (optional)"
+        required: false
+        default: ""
+      research:
+        description: "Research one firm for outreach now: its id from the Firms view (optional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  issues: write        # only used when the digest issue is switched on (DIGEST_ISSUE)
+
+# One run at a time: the database is a set of files in this repository.
+concurrency:
+  group: tracker
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+          python -m playwright install --with-deps chromium
+
+      - name: Import a lead
+        if: ${{ inputs.lead_url != '' }}
+        env:
+          LEAD_URL: ${{ inputs.lead_url }}
+        run: python -m tracker import-lead "$LEAD_URL"
+
+      - name: Queue research
+        if: ${{ inputs.research != '' }}
+        env:
+          FIRM_ID: ${{ inputs.research }}
+        run: python -m tracker research "$FIRM_ID"
+
+      # Stops starting new work after run_minutes (config/settings.yaml), then saves and exports, so the commit
+      # and deploy below always have time. Data is saved even when the run fails.
+      - name: Run the tracker
+        id: tracker
+        continue-on-error: true
+        timeout-minutes: 50
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
+          AI_MONTHLY_CAP_USD: ${{ vars.AI_MONTHLY_CAP_USD }}
+          AI_DAILY_REQUESTS: ${{ vars.AI_DAILY_REQUESTS }}
+          SEARCH_PROVIDER: ${{ vars.SEARCH_PROVIDER }}
+          SEARCH_DAILY_LIMIT: ${{ vars.SEARCH_DAILY_LIMIT }}
+          DIGEST_ISSUE: ${{ vars.DIGEST_ISSUE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STEPS: ${{ inputs.steps }}
+          DIGEST: ${{ inputs.digest }}
+        run: |
+          args=()
+          if [ -n "$STEPS" ]; then args+=(--steps "$STEPS"); fi
+          if [ "$DIGEST" = "true" ]; then args+=(--digest); fi
+          python -m tracker run "${args[@]}"
+
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/db site/data
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "chore: update data $(date -u +%FT%H:%MZ)"
+            git pull --rebase
+            git push
+          fi
+
+      - uses: actions/configure-pages@v6
+        if: always()
+
+      - uses: actions/upload-pages-artifact@v5
+        if: always()
+        with:
+          path: site
+
+      - name: Fail the workflow if the tracker failed
+        if: steps.tracker.outcome != 'success'
+        run: |
+          echo "::error::The tracker run failed (outcome: ${{ steps.tracker.outcome }}). Data was saved and the site deployed."
+          exit 1
+
+  deploy:
+    needs: run
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

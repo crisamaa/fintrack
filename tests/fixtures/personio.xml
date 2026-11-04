@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workzag-jobs>
+  <position>
+    <id>1523301</id>
+    <subcompany>Acme Capital AG</subcompany>
+    <office>Zug</office>
+    <department>Investment</department>
+    <name>Intern Private Equity (6 months)</name>
+    <jobDescriptions>
+      <jobDescription><name>Your tasks</name><value><![CDATA[<p>Support deal teams with financial models for six months.</p>]]></value></jobDescription>
+      <jobDescription><name>Your profile</name><value><![CDATA[<p>Master student in finance. Fluent English required.</p>]]></value></jobDescription>
+    </jobDescriptions>
+    <employmentType>intern</employmentType>
+    <schedule>full-time</schedule>
+    <createdAt>2026-10-30T10:00:00+00:00</createdAt>
+  </position>
+  <position>
+    <id>1523302</id>
+    <office>Zug</office>
+    <name>Office Manager</name>
+    <employmentType>permanent</employmentType>
+    <createdAt>2026-10-01T10:00:00+00:00</createdAt>
+  </position>
+</workzag-jobs>

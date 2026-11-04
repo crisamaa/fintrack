@@ -13,10 +13,14 @@ export function safeUrl(url) {
 
 const has = (selected, value) => !selected || selected.length === 0 || selected.includes(value);
 
-export function visibleRoles(roles, { countries = [], sectors = [], seasons = [], languages = [], openOnly = false } = {}) {
+export function visibleRoles(roles, { countries = [], sectors = [], seasons = [], languages = [], eligibility = [],
+  openOnly = false, confirmedOnly = false, showHidden = false } = {}) {
   return roles.filter((r) => {
     if (openOnly && r.status !== "open") return false;
-    if (!has(sectors, r.sector)) return false;
+    if (confirmedOnly && r.lifecycle === "pending") return false;
+    if (!showHidden && (r.excluded_reason || r.dismissed)) return false;
+    if (eligibility.length > 0 && !eligibility.includes(r.eligibility)) return false;
+    if (sectors.length > 0 && !(r.sectors || [r.sector]).some((x) => sectors.includes(x))) return false;
     if (!has(seasons, r.season)) return false;
     if (countries.length > 0 && !(r.countries || []).some((c) => countries.includes(c))) return false;
     if (languages.length > 0 && (r.languages_required || []).some((l) => !languages.includes(l))) return false;
@@ -105,4 +109,40 @@ export function deadlineBucket(days) {
   if (days <= 13) return "Next week";
   if (days <= 30) return "Within a month";
   return "Later";
+}
+
+// v2 opportunity -> the role shape the views render. `status` keeps v1's two display values (open / closed);
+// the full lifecycle is in `lifecycle` and shown as a tag.
+export const LIVE = new Set(["open", "pending", "unavailable", "unknown"]);
+export function toRole(o, employers = new Map()) {
+  const e = employers.get(o.employer_id);
+  return {
+    ...o,
+    firm_id: o.employer_id, firm_name: o.employer, lifecycle: o.status,
+    status: LIVE.has(o.status) ? "open" : "closed",
+    sector: (o.sectors || [])[0] || (e?.sectors || [])[0] || "other_finance",
+    sectors: (o.sectors || []).length ? o.sectors : (e?.sectors || []),
+    season: o.internship_type || "unknown", year: o.intake_year, closes: o.closes_on,
+    languages_required: o.languages || [], first_seen: (o.first_seen_at || "").slice(0, 10),
+    last_checked: (o.last_verified_at || "").slice(0, 10) || null, closed_on: (o.closed_at || "").slice(0, 10) || null,
+    employer_priority: e?.priority,
+  };
+}
+
+// The latest window of a program, and what the user should read it as.
+export function programStatus(p, today) {
+  const ws = p.windows || [];
+  const year = Math.max(0, ...ws.map((w) => w.intake_year));
+  const cur = ws.filter((w) => w.intake_year === year);
+  const confirmed = cur.find((w) => w.kind === "confirmed");
+  const observed = cur.find((w) => w.kind === "observed");
+  const estimated = cur.find((w) => w.kind === "estimated");
+  const open = (p.live || 0) > 0;
+  if (open) {
+    const seen = ws.filter((w) => w.kind === "observed" || w.kind === "confirmed").sort((a, b) => b.intake_year - a.intake_year)[0];
+    return { key: "open", label: "Open now", year: seen?.intake_year || null, window: seen };
+  }
+  if (confirmed?.opens_on && confirmed.opens_on >= today) return { key: "confirmed", label: "Opening date announced", year, window: confirmed };
+  if (estimated) return { key: "estimated", label: "Expected (estimate)", year, window: estimated };
+  return { key: "history", label: "Closed — history only", year, window: confirmed || observed };
 }

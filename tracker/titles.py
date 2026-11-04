@@ -10,7 +10,9 @@ _INTERNSHIP = re.compile(
         | stage | stagiaire | stagiair
         | tirocinio
         | pr[aá]cticas?
-        | werkstudent(?:in)? | trainee
+        | werkstudent(?:in)? | working\s+student | trainee
+        | practicante | becari[oa] | programa\s+de\s+pr[aá]cticas
+        | insight\s+(?:week|day|programme|program) | spring\s+week
     )(?!\w)""",
     re.IGNORECASE | re.VERBOSE,
 )
