@@ -1,0 +1,23 @@
+[project]
+name = "europe-internship-tracker"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx",
+    "pydantic>=2",
+    "anthropic>=1,<2",
+    "beautifulsoup4",
+    "playwright",
+    "pypdf",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "respx"]
+
+[tool.setuptools]
+packages = ["tracker"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

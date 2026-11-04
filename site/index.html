@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<title>Finance internships in Switzerland and the EU/EEA</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Finance internships in Switzerland and the EU/EEA</h1>
+  <p id="status" class="status" aria-live="polite">Loading...</p>
+  <details id="coverage" class="coverage" hidden>
+    <summary id="coverage-summary"></summary>
+    <p id="coverage-list"></p>
+    <p id="coverage-blocked" hidden><strong>Not covered:</strong> these firms block automated visits, check them by hand. <span id="coverage-blocked-names"></span></p>
+  </details>
+</header>
+<main>
+  <section id="filters" class="filters" aria-label="Filters">
+    <label class="open-only"><input type="checkbox" id="open-only" checked> Open only</label>
+    <details data-filter="countries"><summary>Country <span class="count"></span></summary><div class="options"></div></details>
+    <details data-filter="sectors"><summary>Sector <span class="count"></span></summary><div class="options"></div></details>
+    <details data-filter="seasons"><summary>Season <span class="count"></span></summary><div class="options"></div></details>
+    <details data-filter="languages"><summary>Languages <span class="count"></span></summary>
+      <div class="options"></div>
+      <p class="hint">Hides roles that need a language you have not ticked. Roles with no stated language stay visible.</p>
+    </details>
+    <button type="button" id="reset">Reset</button>
+  </section>
+  <p id="result-count" class="result-count"></p>
+  <div class="table-wrap" id="table-wrap">
+    <table id="roles">
+      <thead><tr></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p id="message" class="message" role="status"></p>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
