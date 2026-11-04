@@ -165,6 +165,28 @@ def test_redirect_loop_capped_at_five_hops():
 
 
 @respx.mock
+def test_robots_redirect_to_disallowing_robots_blocks_page():
+    respx.get("http://a.example/robots.txt").respond(
+        301, headers={"location": "https://www.a.example/robots.txt"})
+    respx.get("https://www.a.example/robots.txt").respond(
+        200, text="User-agent: *\nDisallow: /private\n")
+    page = respx.get("http://a.example/private/x").respond(200, text=LONG)
+    c = make_client()
+    assert c.allowed("http://a.example/private/x") is False
+    with pytest.raises(SourceError):
+        c.get_text("http://a.example/private/x")
+    assert not page.called
+
+
+@respx.mock
+def test_robots_redirect_loop_counts_as_allowed():
+    loop = respx.get("https://a.example/robots.txt").respond(
+        302, headers={"location": "/robots.txt"})
+    assert make_client().allowed("https://a.example/jobs") is True
+    assert loop.call_count == 6  # initial request + 5 hops, then give up
+
+
+@respx.mock
 def test_robots_failures_of_any_kind_count_as_allowed(monkeypatch):
     respx.get("https://a.example/robots.txt").respond(200, text="User-agent: *\nDisallow: /\n")
     monkeypatch.setattr(fetch.RobotFileParser, "parse",

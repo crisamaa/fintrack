@@ -87,7 +87,16 @@ class PoliteClient:
         if host not in self._robots:
             parser: RobotFileParser | None = None
             try:
-                resp = self._get(f"{parts.scheme}://{host}/robots.txt")
+                robots_url = f"{parts.scheme}://{host}/robots.txt"
+                resp = self._get(robots_url)
+                hops = 0
+                while resp.is_redirect and hops < MAX_REDIRECTS:
+                    location = resp.headers.get("location")
+                    if not location:
+                        break
+                    robots_url = urljoin(robots_url, location)
+                    resp = self._get(robots_url)  # per-host delay applies per hop
+                    hops += 1
                 if resp.status_code == 200:
                     parser = RobotFileParser()
                     parser.parse(resp.text.splitlines())
