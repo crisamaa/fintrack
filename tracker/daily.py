@@ -93,7 +93,6 @@ def _enrich_new(client, budget, firm, postings, roles, state, today, blocked=Fal
         if rid in given_up:
             if (today - given_up[rid]).days < GIVE_UP_RETRY_DAYS:
                 continue
-            del given_up[rid]
         if blocked:  # an account error earlier in this run: no more AI calls
             all_done, transient = False, True
             break
@@ -109,6 +108,7 @@ def _enrich_new(client, budget, firm, postings, roles, state, today, blocked=Fal
                 raise
             log.warning("firm %s: AI error on %s", firm.id, p.url, exc_info=exc)
             errors.append(exc)
+            given_up.pop(rid, None)  # a retry that produced a strike starts counting afresh
             failures[rid] = failures.get(rid, 0) + 1
             if failures[rid] >= MAX_AI_FAILURES:
                 given_up[rid] = today
@@ -123,6 +123,7 @@ def _enrich_new(client, budget, firm, postings, roles, state, today, blocked=Fal
             transient = True
             continue
         failures.pop(rid, None)
+        given_up.pop(rid, None)
         if e.is_internship and ALLOWED_COUNTRIES.intersection(e.countries):
             accepted[rid] = e
         else:

@@ -533,3 +533,56 @@ def test_input_specific_413_is_a_strike(env):
         env.go([firm()], today=date(2026, 11, d))
     st = json.loads((env.data / "firm_state.json").read_text())["acme"]
     assert len(st["given_up"]) == 1 and st["role_failures"] == {}
+
+
+def _giveup_then_day30(env):
+    """Give up on one feed posting (days 4-6), return the day-30 retry date."""
+    env.feed = {"acme": [posting()], "bad": [posting("bad")]}
+    env.enrich_result = _raise(AIUnusable("bad"))
+    for d in (4, 5, 6):
+        env.go([firm()], today=date(2026, 11, d))
+    assert len(env.enrich_calls) == 3
+    return date(2026, 12, 6)
+
+
+@pytest.mark.parametrize("case", ["account_error", "blocked", "transient_none", "budget_stop"])
+def test_day_30_retry_interrupted_keeps_given_up_and_listing(env, case):
+    day = _giveup_then_day30(env)
+    firms = [firm()]
+    if case == "account_error":
+        env.enrich_result = _raise(_api(401))
+    elif case == "blocked":
+        firms = [firm("bad"), firm()]
+        env.enrich_result = lambda p: (_ for _ in ()).throw(_api(401)) if p.firm_id == "bad" else enr()
+    elif case == "transient_none":
+        env.enrich_result = lambda p: None
+    else:
+        def stop(p):
+            env_budget[0].exhausted = True
+            return None
+        env_budget = []
+        orig = daily.Budget
+
+        def mk(*a, **k):
+            b = orig(*a, **k)
+            env_budget.append(b)
+            return b
+
+        daily.Budget = mk
+        env.enrich_result = stop
+    try:
+        out = env.go(firms, today=day)
+    finally:
+        if case == "budget_stop":
+            daily.Budget = orig
+    st = json.loads((env.data / "firm_state.json").read_text())["acme"]
+    assert len(st["given_up"]) == 1 and st["role_failures"] == {} and st["rejected"] == []
+    assert "Acme" in out["firms_failed"] and out["roles"] == []
+    # later runs still treat it as pending and listed, then recovery shows the role
+    env.enrich_result = lambda p: None if case == "transient_none" else enr()
+    out = env.go([firm()], today=date(2026, 12, 7))
+    if case == "transient_none":
+        assert "Acme" in out["firms_failed"]
+        env.enrich_result = lambda p: enr()
+        out = env.go([firm()], today=date(2026, 12, 8))
+    assert len(out["roles"]) == 1 and out["firms_failed"] == []
