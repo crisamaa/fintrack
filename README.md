@@ -27,8 +27,10 @@ These steps involve accounts and keys, so you do them yourself.
 | Monthly discovery | 04:00 UTC on the 1st, or by hand | Reads FINMA's list of authorised banks, looks for job boards we can read, and commits changes to `firms/`. |
 | Tests | On every push | `pytest` and `node --test "site/*.test.mjs"`. |
 
-Only one daily run goes at a time. A full first pass over every firm can take most of the one-hour job limit; if
-it does not finish, the data saved so far is committed and the next run carries on (unchanged pages are skipped).
+Only one daily run goes at a time. The run stops starting new firms after 45 minutes, then saves its data and
+updates the site, so a cut-off run still publishes what it read. Firms never checked go first, then the least
+recently checked. The first pass over every firm is too big for one run, so the site fills in over the first few
+runs; after that, unchanged pages are skipped and runs are short.
 
 ## What it costs
 

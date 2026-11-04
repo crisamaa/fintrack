@@ -615,3 +615,60 @@ def test_shipped_blocked_list_parses():
     from pathlib import Path
     names = daily._load_not_covered(Path(__file__).parent.parent / "firms" / "blocked.yaml")
     assert len(names) == 15 and "UBS" in names and "Neuberger Berman" in names
+
+
+def _two_firms_env(env, ticks):
+    env.feed = {"acme": [posting("acme")], "beta": [posting("beta")]}
+    it = iter(ticks)
+    last = [0]
+
+    def clock():
+        last[0] = next(it, last[0])
+        return last[0]
+    return clock
+
+
+def test_deadline_stops_new_firms_writes_site_and_a_later_run_finishes(env):
+    firms = [firm("acme"), firm("beta")]
+    # started=0; before acme 0 (ok); before beta 3000s > 45 min -> stop
+    clock = _two_firms_env(env, [0, 0, 3000])
+    daily.run(firms, env.data, env.site, TODAY, client=object(), http=object(), polite=env.polite, clock=clock)
+    out = json.loads((env.site / "data" / "roles.json").read_text())
+    assert [r["firm_id"] for r in out["roles"]] == ["acme"]
+    assert (out["firms_checked"], out["firms_unread"], out["firms_failed"]) == (1, 1, [])
+    # next run: acme was checked, beta never, so beta goes first and the run reaches both
+    out = env.go(firms)
+    assert sorted(r["firm_id"] for r in out["roles"]) == ["acme", "beta"]
+    assert (out["firms_checked"], out["firms_unread"]) == (2, 0)
+
+
+def test_deadline_zero_reads_nothing_but_still_writes_site(env):
+    env.feed = {"acme": [posting()]}
+    daily.run([firm()], env.data, env.site, TODAY, client=object(), http=object(), polite=env.polite,
+              deadline_minutes=0)
+    out = json.loads((env.site / "data" / "roles.json").read_text())
+    assert out["roles"] == [] and out["firms_unread"] == 1 and out["firms_checked"] == 0
+
+
+def test_never_checked_firms_first_then_oldest_with_list_order_ties(env):
+    from tracker.merge import FirmState
+    env.data.mkdir(parents=True)
+    states = {"a": FirmState(last_checked=date(2026, 11, 3)), "b": FirmState(last_checked=date(2026, 10, 1)),
+              "c": FirmState(last_checked=date(2026, 10, 1))}
+    (env.data / "firm_state.json").write_text(
+        json.dumps({k: v.model_dump(mode="json") for k, v in states.items()}))
+    seen = []
+    env.feed = {k: [] for k in "abcde"}
+    orig = daily.fetch_feed
+
+    def spy(f, http):
+        seen.append(f.id)
+        return orig(f, http)
+    import pytest as _p
+    mp = _p.MonkeyPatch()
+    mp.setattr(daily, "fetch_feed", spy)
+    try:
+        env.go([firm(i) for i in "abcde"])  # d, e never checked
+    finally:
+        mp.undo()
+    assert seen == ["d", "e", "b", "c", "a"]

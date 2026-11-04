@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -20,6 +21,7 @@ from tracker.models import ALLOWED_COUNTRIES, Firm, Role, role_id
 
 MAX_AI_FAILURES = 3
 GIVE_UP_RETRY_DAYS = 30
+DEADLINE_MINUTES = 45  # stop starting new firms after this long, so the site data is still written
 log = logging.getLogger(__name__)
 USER_AGENT = "europe-internship-tracker/1.0"
 
@@ -191,7 +193,8 @@ def _process(firm, roles, state, client, http, polite, budget, today, blocked=Fa
 
 
 def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, http,
-        polite: PoliteClient | None = None, not_covered: list[str] | None = None) -> None:
+        polite: PoliteClient | None = None, not_covered: list[str] | None = None,
+        deadline_minutes: float = DEADLINE_MINUTES, clock=time.monotonic) -> None:
     data_dir, site_dir = Path(data_dir), Path(site_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     (site_dir / "data").mkdir(parents=True, exist_ok=True)
@@ -202,7 +205,18 @@ def run(firms: list[Firm], data_dir: Path, site_dir: Path, today: date, client, 
     checked = unread = 0
     account_error = False
 
-    for firm in firms:
+    started = clock()
+    # Never-checked firms first, then the least recently checked; ties keep the firm-list order (sort is stable).
+    def _age(f):
+        lc = states.get(f.id, FirmState()).last_checked
+        return (lc is not None, lc or date.min)
+
+    order = sorted(firms, key=_age)
+    for i, firm in enumerate(order):
+        if clock() - started >= deadline_minutes * 60:
+            log.warning("deadline reached: %d firms not reached this run", len(order) - i)
+            unread += len(order) - i
+            break
         state = states.get(firm.id, FirmState())
         try:
             if firm.source == "page" and polite is None:
