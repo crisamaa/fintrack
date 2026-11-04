@@ -18,6 +18,26 @@ def test_page_text_strips_script():
     assert page_text("<p>Intern</p><script>x()</script>") == "Intern"
 
 
+def test_page_text_keeps_link_targets_inline():
+    out = page_text('<p>Apply: <a href="/jobs/42?s=abc">Summer Intern</a> now</p>')
+    assert out == "Apply: Summer Intern </jobs/42?s=abc> now"
+
+
+def test_page_text_skips_non_navigational_links():
+    assert page_text('<a href="#top">Top</a><a href="javascript:x()">J</a><a href="mailto:a@b.c">M</a>') == "Top J M"
+
+
+def test_hash_ignores_link_targets():
+    a = page_text('<a href="/job/1?session=aaa">Intern</a>')
+    b = page_text('<a href="/job/1?session=bbb">Intern</a>')
+    assert a != b
+    assert text_hash(a) == text_hash(b)
+
+
+def test_hash_still_changes_when_text_changes():
+    assert text_hash(page_text('<a href="/x">Intern</a>')) != text_hash(page_text('<a href="/x">Analyst</a>'))
+
+
 def test_page_text_strips_style_and_collapses_whitespace():
     assert page_text("<style>p{}</style><p>a \n\n b</p>\n<p>c</p>") == "a b c"
 

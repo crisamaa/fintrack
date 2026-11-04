@@ -1,4 +1,5 @@
 """Budget-capped AI reading of career pages and postings. Returns None when a call should be retried later."""
+import hashlib
 from urllib.parse import urljoin, urlparse
 
 import anthropic
@@ -19,8 +20,9 @@ _UNTRUSTED = (
 
 EXTRACT_SYSTEM = (
     "You extract internship postings from the text of a company careers page. " + _UNTRUSTED + " "
-    "List every posting that is an internship, traineeship, stage, praktikum, stagiaire or similar "
-    "student or graduate placement. For each, give the title, the link URL exactly as it appears "
+    "Links in the text appear right after their link text as `text <url>`; use that URL for the "
+    "posting it belongs to. List every posting that is an internship, traineeship, stage, praktikum, stagiaire or similar "
+    "student or graduate placement. For each, give the title, the link URL exactly as it appears in the `<url>` after the posting's link text "
     "(empty string if none), the location, and a short description. Do not invent postings. "
     "If there are none, return an empty list."
 )
@@ -48,16 +50,20 @@ def chunk_text(text: str) -> list[str]:
     return [text[i:i + CHUNK_CHARS] for i in range(0, len(text), CHUNK_CHARS)]
 
 
-def _call(client, budget: Budget, *, output_format, system: str, content: str):
-    """One billed call. Returns the parsed result or None (budget, API trouble, refusal, no output)."""
+def _call(client, budget: Budget, *, model: type[BaseModel], system: str, content: str):
+    """One billed call. Returns a validated `model` or None (budget, API trouble, refusal, bad output).
+
+    Usage is recorded straight after the response, before anything is validated, so a billed
+    refusal, cut-off or garbled reply still counts against the budget.
+    """
     if not budget.can_spend():
         return None
     try:
-        resp = client.messages.parse(
+        resp = client.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            output_format=output_format,
-            output_config={"effort": "low"},
+            output_config={"effort": "low",
+                           "format": {"type": "json_schema", "schema": anthropic.transform_schema(model)}},
             system=system,
             messages=[{"role": "user", "content": content}],
         )
@@ -67,41 +73,55 @@ def _call(client, budget: Budget, *, output_format, system: str, content: str):
         if e.status_code >= 500:  # includes 529 overloaded
             return None
         raise
-    except ValidationError:
-        # Output did not match the schema (e.g. cut off); no usage is visible to us.
-        return None
     budget.record(resp.usage.input_tokens, resp.usage.output_tokens)
     if resp.stop_reason == "refusal":
         return None
-    return resp.parsed_output
+    text = "".join(b.text for b in resp.content if b.type == "text")
+    try:
+        return model.model_validate_json(text)
+    except ValidationError:
+        return None
 
 
 def _resolve(url: str, base: str | None) -> str | None:
+    """Absolute http(s) URL for a link the model returned, or None if unusable."""
     url = (url or "").strip()
-    candidate = urljoin(base, url) if base and url else url
-    if candidate and urlparse(candidate).scheme in ("http", "https") and urlparse(candidate).netloc:
-        return candidate
-    return base if base and urlparse(base).scheme in ("http", "https") else None
+    if not url:
+        return None
+    try:
+        candidate = urljoin(base, url) if base else url
+        parts = urlparse(candidate)
+    except ValueError:
+        return None
+    return candidate if parts.scheme in ("http", "https") and parts.netloc else None
+
+
+def _fallback_url(firm: Firm, title: str, location: str) -> str | None:
+    if not firm.careers_url:
+        return None
+    digest = hashlib.sha1(f"{title}|{location}".encode()).hexdigest()[:10]
+    return f"{firm.careers_url.split('#')[0]}#{digest}"
 
 
 def extract_postings(client, budget: Budget, firm: Firm, text: str) -> list[Posting] | None:
     out: list[Posting] = []
     for chunk in chunk_text(text):
-        parsed = _call(client, budget, output_format=PostingList, system=EXTRACT_SYSTEM,
+        parsed = _call(client, budget, model=PostingList, system=EXTRACT_SYSTEM,
                        content=f"Careers page of {firm.name}. Page text follows.\n\n<page_text>\n{chunk}\n</page_text>")
         if parsed is None:
             return None  # retry the whole page later rather than keep half of it
         for p in parsed.postings:
-            url = _resolve(p.url, firm.careers_url)
-            if url is None or not p.title.strip():
+            title = p.title.strip()
+            url = _resolve(p.url, firm.careers_url) or _fallback_url(firm, title, p.location)
+            if url is None or not title:
                 continue
-            out.append(Posting(firm_id=firm.id, title=p.title.strip(), url=url,
+            out.append(Posting(firm_id=firm.id, title=title, url=url,
                                location=p.location, description=p.description))
     return out
 
 
 def enrich(client, budget: Budget, posting: Posting) -> Enrichment | None:
-    parsed = _call(client, budget, output_format=Enrichment, system=ENRICH_SYSTEM,
+    parsed = _call(client, budget, model=Enrichment, system=ENRICH_SYSTEM,
                    content=(f"<posting>\nTitle: {posting.title}\nLocation: {posting.location}\n"
                             f"Description: {posting.description}\n</posting>"))
     if parsed is None:

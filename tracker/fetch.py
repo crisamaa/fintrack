@@ -1,12 +1,13 @@
 """Polite page fetching: robots.txt, per-host delay, text extraction, browser fallback."""
 import hashlib
+import re
 import time
 from typing import Callable
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import httpx
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
 from tracker.feeds import SourceError
 
@@ -15,20 +16,30 @@ MIN_TEXT_CHARS = 200
 MAX_REDIRECTS = 5
 
 
+_LINK_TARGET = re.compile(r"\s*<[^<>\s]+>")
+_SKIP_HREF = ("#", "javascript:", "mailto:", "tel:")
+
+
 def page_text(html: str) -> str:
-    """Visible text with scripts and styles removed and whitespace collapsed."""
+    """Visible text, whitespace collapsed, with each link's target kept inline as `text <url>`."""
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "noscript", "template"]):
         tag.decompose()
+    for a in soup.find_all("a", href=True):
+        href = " ".join(str(a["href"]).split())
+        if href and not href.lower().startswith(_SKIP_HREF):
+            a.append(NavigableString(f" <{href}>"))
     return " ".join(soup.get_text(" ").split())
 
 
 def text_hash(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    """Hash of the text without `<url>` link targets, so rotating tokens in links don't look like changes."""
+    stripped = " ".join(_LINK_TARGET.sub("", text).split())
+    return hashlib.sha256(stripped.encode("utf-8")).hexdigest()
 
 
 def render_with_browser(url: str) -> str:
-    """Render a page in headless Chromium and return its visible text."""
+    """Render a page in headless Chromium and return its text (same form as page_text)."""
     try:
         from playwright.sync_api import sync_playwright
 
