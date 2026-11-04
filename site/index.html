@@ -8,7 +8,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link id="theme-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@600&text=Fintrack&display=swap">
 <link rel="stylesheet" href="style.css">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Finance internships in Switzerland and the EU, read from firms' own career pages every day.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Fintrack">
+<meta property="og:title" content="Fintrack — finance internships, Switzerland &amp; EU">
+<meta property="og:description" content="Finance internships in Switzerland and the EU, read from firms' own career pages every day.">
+<meta property="og:image" content="https://crisamaa.github.io/fintrack/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Fintrack logo">
+<meta name="twitter:card" content="summary_large_image">
 <script>
   // Apply the saved theme before first paint.
   try { const t = JSON.parse(localStorage.getItem("fintrack.prefs.v1"))?.theme; if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -18,7 +32,14 @@
 <a class="skip" href="#view">Skip to content</a>
 <div class="app">
   <nav class="rail" aria-label="Main">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">ƒ</span>fintrack</div>
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 64 64" width="26" height="26" aria-hidden="true" focusable="false">
+        <rect class="brand-mark-tile" width="64" height="64" rx="12"/>
+        <path class="brand-mark-glyph" d="M16 16H48V24H24V28H36V36H24V48H16Z"/>
+        <circle class="brand-mark-glyph" cx="44" cy="32" r="4"/>
+      </svg>
+      <span class="brand-name">Fintrack</span>
+    </div>
     <ul class="nav">
       <li><a href="#discover" data-view="discover"><span>Discover</span><kbd>1</kbd><span class="nav-count" id="count-discover"></span></a></li>
       <li><a href="#pipeline" data-view="pipeline"><span>Pipeline</span><kbd>2</kbd><span class="nav-count" id="count-pipeline"></span></a></li>
