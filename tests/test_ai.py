@@ -1,3 +1,4 @@
+import math
 import json
 
 import httpx
@@ -5,6 +6,12 @@ import pytest
 
 from tracker.ai import MODEL, AIUnusable, APIError, GeminiClient, enrich, extract_postings
 from tracker.budget import Budget
+from tracker.budget import INPUT_USD_PER_M, OUTPUT_USD_PER_M
+
+
+def m(usd):
+    """Input tokens that cost `usd` at the current model price, so tests survive price changes."""
+    return math.ceil(usd / INPUT_USD_PER_M * 1e6)
 from tracker.models import Enrichment, Firm, Posting
 
 FIRM = Firm(id="acme", name="Acme", sector="banking", country="CH", source="page",
@@ -75,8 +82,9 @@ def test_request_shape(budget):
     c = FakeClient([reply(wrapper([item()]))])
     extract_postings(c, budget, FIRM, "page text")
     kw = c.calls[0]
-    assert MODEL == "gemini-2.5-flash-lite" and f"/models/{MODEL}:generateContent" in c.urls[0]
+    assert MODEL == "gemini-3.5-flash-lite" and f"/models/{MODEL}:generateContent" in c.urls[0]
     cfg = kw["generationConfig"]
+    assert cfg["thinkingConfig"] == {"thinkingLevel": "minimal"}
     assert cfg["maxOutputTokens"] == 16000 and cfg["responseMimeType"] == "application/json"
     assert "postings" in cfg["responseJsonSchema"]["properties"]
     system = kw["systemInstruction"]["parts"][0]["text"]
@@ -99,13 +107,13 @@ def test_extract_resolves_urls_and_sets_firm(budget):
 
 
 def test_usage_recorded_after_call(budget):
-    c = FakeClient([reply(wrapper([]), inp=1_000_000, out=0)])
+    c = FakeClient([reply(wrapper([]), inp=m(0.10), out=0)])
     extract_postings(c, budget, FIRM, "t")
-    assert budget.spent() == pytest.approx(0.10)
+    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
 
 
 def test_no_api_call_when_budget_spent(budget):
-    budget.record(49_000_000, 0)
+    budget.record(m(4.90), 0)
     c = FakeClient([])
     assert extract_postings(c, budget, FIRM, "t") is None
     assert enrich(c, budget, POSTING) is None
@@ -113,10 +121,10 @@ def test_no_api_call_when_budget_spent(budget):
 
 
 def test_refusal_returns_none_but_is_billed(budget):
-    c = FakeClient([reply(None, stop="refusal", inp=1_000_000, out=0)])
+    c = FakeClient([reply(None, stop="refusal", inp=m(0.10), out=0)])
     with pytest.raises(AIUnusable):
         extract_postings(c, budget, FIRM, "t")
-    assert budget.spent() == pytest.approx(0.10)
+    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
 
 
 def test_refusal_checked_before_parsed_output(budget):
@@ -126,10 +134,10 @@ def test_refusal_checked_before_parsed_output(budget):
 
 
 def test_missing_parsed_output_returns_none_but_is_billed(budget):
-    c = FakeClient([reply(None, stop="max_tokens", inp=1_000_000, out=0)])
+    c = FakeClient([reply(None, stop="max_tokens", inp=m(0.10), out=0)])
     with pytest.raises(AIUnusable):
         enrich(c, budget, POSTING)
-    assert budget.spent() == pytest.approx(0.10)
+    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
 
 
 def test_long_text_is_chunked_not_truncated(budget):
@@ -158,7 +166,7 @@ def test_one_unusable_chunk_fails_whole_page(budget):
 
 
 def test_budget_exhausted_midway_returns_none(budget):
-    c = FakeClient([reply(wrapper([item()]), inp=49_000_000, out=0), reply(wrapper([item()]))])
+    c = FakeClient([reply(wrapper([item()]), inp=m(4.90), out=0), reply(wrapper([item()]))])
     assert extract_postings(c, budget, FIRM, "q" * 50_000) is None
     assert len(c.calls) == 1
 
@@ -201,7 +209,7 @@ def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
     else:
         with pytest.raises(AIUnusable):
             enrich(FakeClient([r]), b, POSTING)
-    assert b.spent() == pytest.approx(0.50)
+    assert b.spent() == pytest.approx(INPUT_USD_PER_M + OUTPUT_USD_PER_M, abs=1e-5)
 
 
 @pytest.mark.parametrize("r", [
@@ -210,11 +218,11 @@ def test_every_billed_outcome_records_full_usage(tmp_path, label, r):
     reply(None, text=""),
 ])
 def test_extract_unusable_output_raises_and_is_billed(tmp_path, r):
-    r["usageMetadata"] = {"promptTokenCount": 1_000_000, "candidatesTokenCount": 0}
+    r["usageMetadata"] = {"promptTokenCount": m(0.10), "candidatesTokenCount": 0}
     b = Budget(tmp_path / "b.json", "2026-11")
     with pytest.raises(AIUnusable):
         extract_postings(FakeClient([r]), b, FIRM, "t")
-    assert b.spent() == pytest.approx(0.10)
+    assert b.spent() == pytest.approx(0.10, abs=1e-5)
 
 
 def test_malformed_model_url_does_not_crash(budget):
@@ -257,10 +265,10 @@ def test_enrich_request_shape_and_untrusted_framing(budget):
 
 def test_blocked_prompt_is_unusable_and_billed(budget):
     c = FakeClient([{"promptFeedback": {"blockReason": "SAFETY"},
-                     "usageMetadata": {"promptTokenCount": 1_000_000}}])
+                     "usageMetadata": {"promptTokenCount": m(0.10)}}])
     with pytest.raises(AIUnusable):
         enrich(c, budget, POSTING)
-    assert budget.spent() == pytest.approx(0.10)
+    assert budget.spent() == pytest.approx(0.10, abs=1e-5)
 
 
 def test_thinking_tokens_billed_as_output_and_thought_parts_ignored(budget):
@@ -268,7 +276,7 @@ def test_thinking_tokens_billed_as_output_and_thought_parts_ignored(budget):
     r["candidates"][0]["content"]["parts"].insert(0, {"text": "hmm", "thought": True})
     r["usageMetadata"] = {"promptTokenCount": 0, "candidatesTokenCount": 500_000, "thoughtsTokenCount": 500_000}
     assert enrich(FakeClient([r]), budget, POSTING) is not None
-    assert budget.spent() == pytest.approx(0.40)
+    assert budget.spent() == pytest.approx(OUTPUT_USD_PER_M, abs=1e-5)
 
 
 def test_api_key_sent_in_header_not_url():

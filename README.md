@@ -35,7 +35,7 @@ runs; after that, unchanged pages are skipped and runs are short.
 ## What it costs
 
 - GitHub Actions and Pages: free for a public repository.
-- Gemini API: `gemini-2.5-flash-lite` at $0.10 per million input tokens and $0.40 per million output tokens. A spending cap is built in:
+- Gemini API: `gemini-3.5-flash-lite` at $0.30 per million input tokens and $2.50 per million output tokens (thinking set to minimal). A spending cap is built in:
   `MONTHLY_CAP_USD = 5.00` in `tracker/budget.py`, and no new AI call starts once $4.90 is spent that month.
   Spending is tracked in `data/spend.json`. Pages that have not changed since the last run are not sent to the AI
   again, so after the first pass a normal month should cost a small fraction of the cap. Compare `data/spend.json`
