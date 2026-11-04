@@ -5,10 +5,10 @@ import pytest
 from tracker.budget import Budget
 
 
-def test_spend_recorded_at_haiku_prices(tmp_path):
+def test_spend_recorded_at_model_prices(tmp_path):
     b = Budget(tmp_path / "s.json", "2026-11")
     b.record(1_000_000, 1_000_000)
-    assert b.spent() == pytest.approx(0.60)
+    assert b.spent() == pytest.approx(0.50)
 
 
 def test_stops_at_4_90(tmp_path):

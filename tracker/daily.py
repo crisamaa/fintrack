@@ -7,11 +7,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-import anthropic
 import httpx
 import yaml
 
-from tracker.ai import AIUnusable, enrich, extract_postings
+from tracker.ai import AIUnusable, APIError, GeminiClient, enrich, extract_postings
 from tracker.budget import Budget
 from tracker.feeds import SourceError, fetch_feed
 from tracker.fetch import PoliteClient, text_hash
@@ -63,7 +62,7 @@ class Outcome:
 
 def _is_account_error(exc: BaseException) -> bool:
     """Client errors that are about the account or request setup, not the posting: never a strike."""
-    if isinstance(exc, anthropic.APIStatusError) and not _is_strike(exc):
+    if isinstance(exc, APIError) and not _is_strike(exc):
         return True
     return False
 
@@ -72,8 +71,8 @@ def _is_strike(exc: BaseException) -> bool:
     """Billed-but-unusable replies and input-specific 400/413 count toward giving up; nothing else does."""
     if isinstance(exc, AIUnusable):
         return True
-    if isinstance(exc, anthropic.APIStatusError) and exc.status_code in (400, 413):
-        return "credit balance" not in str(exc).lower()
+    if isinstance(exc, APIError) and exc.status_code in (400, 413):
+        return not any(w in str(exc).lower() for w in ("api key", "billing", "credit balance"))
     return False
 
 
@@ -271,7 +270,7 @@ def main() -> None:
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=30.0, follow_redirects=True,
                       event_hooks=polite.event_hooks()) as http:
         try:
-            run(firms, Path("data"), Path("site"), date.today(), anthropic.Anthropic(), http, polite=polite,
+            run(firms, Path("data"), Path("site"), date.today(), GeminiClient(os.environ.get("GEMINI_API_KEY", "")), http, polite=polite,
                 not_covered=not_covered)
         except RunFailed as e:
             log.error("run failed: %s", e)

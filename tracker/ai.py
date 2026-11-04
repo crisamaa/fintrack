@@ -6,13 +6,16 @@ connection trouble, 5xx). Raises AIUnusable when a billed reply was unusable (re
 import hashlib
 from urllib.parse import urljoin, urlparse
 
-import anthropic
+import httpx
 from pydantic import BaseModel, ValidationError
 
 from tracker.budget import Budget
 from tracker.models import ALLOWED_COUNTRIES, Enrichment, Firm, Posting
 
-MODEL = "claude-haiku-5-5"
+MODEL = "gemini-2.5-flash-lite"
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+# Finish reasons meaning the model declined or was blocked (billed, but unusable).
+_BLOCKED = {"SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "LANGUAGE", "OTHER"}
 MAX_TOKENS = 16000
 CHUNK_CHARS = 40_000
 
@@ -43,6 +46,43 @@ class AIUnusable(Exception):
     """The model replied (and was billed) but the reply could not be used."""
 
 
+class APIError(Exception):
+    """The Gemini API answered with an HTTP error status."""
+
+    def __init__(self, status_code: int, message: str):
+        super().__init__(f"{status_code}: {message}")
+        self.status_code = status_code
+
+
+class GeminiClient:
+    """Minimal Gemini generateContent client over httpx. The key comes from GEMINI_API_KEY."""
+
+    def __init__(self, api_key: str, http: httpx.Client | None = None):
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY is not set")
+        self.api_key = api_key
+        self.http = http or httpx.Client(timeout=120.0)
+
+    def generate(self, *, system: str, content: str, schema: dict, max_tokens: int) -> dict:
+        body = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": content}]}],
+            "generationConfig": {
+                "maxOutputTokens": max_tokens,
+                "responseMimeType": "application/json",
+                "responseJsonSchema": schema,
+            },
+        }
+        r = self.http.post(API_URL.format(model=MODEL), json=body, headers={"x-goog-api-key": self.api_key})
+        if r.status_code >= 400:
+            try:
+                msg = r.json().get("error", {}).get("message", r.text)
+            except ValueError:
+                msg = r.text
+            raise APIError(r.status_code, msg)
+        return r.json()
+
+
 class ExtractedPosting(BaseModel):
     title: str
     url: str
@@ -68,24 +108,25 @@ def _call(client, budget: Budget, *, model: type[BaseModel], system: str, conten
     if not budget.can_spend():
         return None
     try:
-        resp = client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            output_config={"effort": "low",
-                           "format": {"type": "json_schema", "schema": anthropic.transform_schema(model)}},
-            system=system,
-            messages=[{"role": "user", "content": content}],
-        )
-    except (anthropic.RateLimitError, anthropic.APIConnectionError):
+        resp = client.generate(system=system, content=content, schema=model.model_json_schema(),
+                               max_tokens=MAX_TOKENS)
+    except httpx.TransportError:
         return None
-    except anthropic.APIStatusError as e:
-        if e.status_code >= 500:  # includes 529 overloaded
+    except APIError as e:
+        if e.status_code == 429 or e.status_code >= 500:
             return None
         raise
-    budget.record(resp.usage.input_tokens, resp.usage.output_tokens)
-    if resp.stop_reason == "refusal":
-        raise AIUnusable("model refused")
-    text = "".join(b.text for b in resp.content if b.type == "text")
+    usage = resp.get("usageMetadata") or {}
+    budget.record(usage.get("promptTokenCount", 0),
+                  usage.get("candidatesTokenCount", 0) + usage.get("thoughtsTokenCount", 0))
+    candidates = resp.get("candidates") or []
+    if not candidates:
+        raise AIUnusable("prompt blocked: %s" % (resp.get("promptFeedback") or {}).get("blockReason"))
+    cand = candidates[0]
+    if cand.get("finishReason") in _BLOCKED:
+        raise AIUnusable(f"model refused ({cand.get('finishReason')})")
+    text = "".join(part.get("text", "") for part in (cand.get("content") or {}).get("parts", [])
+                   if not part.get("thought"))
     try:
         return model.model_validate_json(text)
     except ValidationError as e:

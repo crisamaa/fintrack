@@ -1,12 +1,11 @@
 import json
 from datetime import date
 
-import anthropic
 import httpx
 import pytest
 
 from tracker import daily
-from tracker.ai import AIUnusable
+from tracker.ai import AIUnusable, APIError
 from tracker.models import Enrichment, Firm, Posting, role_id
 
 TODAY = date(2026, 11, 4)
@@ -234,7 +233,7 @@ def test_page_extract_failing_three_times_gives_up_but_stays_listed(env):
 def test_page_extract_4xx_advances_counter_and_continues(env):
     f = firm(source="page")
     req = httpx.Request("POST", "https://api.test")
-    env.extract_result = _raise_budget(anthropic.BadRequestError("x", response=httpx.Response(400, request=req), body=None))
+    env.extract_result = _raise_budget(APIError(400, "x"))
     for d in (4, 5, 6):
         env.go([f], today=date(2026, 11, d))
     assert env.extract_calls == 3
@@ -337,14 +336,13 @@ def test_one_firm_crashing_does_not_stop_run(env):
 
 def _bad(code):
     req = httpx.Request("POST", "https://api.test")
-    return anthropic.APIStatusError("x", response=httpx.Response(code, request=req), body=None) if code != 401 else \
-        anthropic.AuthenticationError("x", response=httpx.Response(401, request=req), body=None)
+    return APIError(code, "x")
 
 
 def test_ai_4xx_keeps_partial_progress_counts_strike_and_continues(env):
     def res(p):
         if p.url.endswith("/2"):
-            raise anthropic.BadRequestError("long", response=httpx.Response(400, request=httpx.Request("POST", "https://a.test")), body=None)
+            raise APIError(400, "long")
         return enr()
 
     env.feed = {"bad": [posting("bad", 1), posting("bad", 2), posting("bad", 3)], "acme": [posting()]}
@@ -402,7 +400,7 @@ def test_main_exits_nonzero_when_all_firms_fail(tmp_path, monkeypatch):
     (tmp_path / "firms").mkdir()
     (tmp_path / "firms" / "firms.yaml").write_text(
         "firms:\n  - {id: acme, name: Acme, sector: banking, country: CH, source: greenhouse, slug: acme}\n")
-    monkeypatch.setattr(daily.anthropic, "Anthropic", lambda: object())
+    monkeypatch.setattr(daily, "GeminiClient", lambda key: object())
     monkeypatch.setattr(daily, "fetch_feed", lambda f, h: (_ for _ in ()).throw(RuntimeError("down")))
     with pytest.raises(SystemExit) as ei:
         daily.main()
@@ -415,7 +413,7 @@ def test_main_succeeds_and_builds_polite_feed_client(tmp_path, monkeypatch):
     (tmp_path / "firms").mkdir()
     (tmp_path / "firms" / "firms.yaml").write_text(
         "- {id: acme, name: Acme, sector: banking, country: CH, source: greenhouse, slug: acme}\n")
-    monkeypatch.setattr(daily.anthropic, "Anthropic", lambda: object())
+    monkeypatch.setattr(daily, "GeminiClient", lambda key: object())
     seen = {}
 
     def feed(f, http):
@@ -462,7 +460,7 @@ def test_budget_file_and_month_key(env):
 
 def _api(code, msg="x"):
     req = httpx.Request("POST", "https://api.test")
-    return anthropic.APIStatusError(msg, response=httpx.Response(code, request=req), body=None)
+    return APIError(code, msg)
 
 
 def test_unusable_posting_on_unchanged_page_reaches_three_strikes_and_stays_listed(env):
