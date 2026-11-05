@@ -25,7 +25,7 @@ Other commands: `status`, `backup`, `restore`, `migrate`, `import-lead URL [--em
 
 The **Tracker run** workflow (`.github/workflows/run.yml`) runs six times a day and by hand. By-hand inputs: steps to
 run, build the digest now, import a lead URL, research one firm. It commits `data/db` and `site/data` and deploys the
-site. A failing run still commits its data and deploys, then marks the workflow failed. **Tests** run on every push.
+site. A failing run still commits its data and deploys, then marks the workflow failed. **Deploy site** republishes `site/` as soon as a change to it is merged into main (no need to wait for the next run). **Tests** run on every push.
 
 ## Monitoring
 
