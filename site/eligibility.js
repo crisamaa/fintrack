@@ -4,6 +4,7 @@
 // Outcomes, from strongest to weakest:
 //   ineligible    a stated requirement excludes you (with the employer's words and your profile value)
 //   sponsorship   you lack the right to work there, but the employer states that it sponsors
+//   language_gap  nothing else excludes you, but you speak only some of the languages it asks for
 //   eligible      you hold a confirmed right to work in its country, and nothing stated excludes you
 //   potential     nothing excludes you, but something important is unknown (e.g. no sponsorship statement)
 //   insufficient  not enough information about the role or your profile to say anything
@@ -20,6 +21,7 @@ export const OUTCOMES = {
   eligible: "Confirmed eligible",
   potential: "Potentially eligible",
   sponsorship: "Sponsorship route",
+  language_gap: "Partial language match",
   ineligible: "Confirmed ineligible",
   insufficient: "Insufficient information",
 };
@@ -137,13 +139,21 @@ function languages(opp, profile, languageName = (c) => c) {
   for (const c of opp.languages || []) if (!required.has(c)) required.set(c, null);
   if (!required.size) return [];
   const mine = new Map((profile?.languages || []).filter((l) => l?.code).map((l) => [l.code, l.level || "working"]));
-  return [...required].map(([code, r]) => {
+  const lines = [...required].map(([code, r]) => {
     if (!mine.size) return { dim: "language", result: "unknown", reason: `Requires ${languageName(code)}; add your languages in Profile.` };
     const level = mine.get(code);
-    if (level && (LEVEL_RANK[level] || 0) >= LEVEL_RANK.working) return { dim: "language", result: "pass", reason: `${languageName(code)}: you have ${level}.` };
-    return { dim: "language", result: "fail",
+    if (level && (LEVEL_RANK[level] || 0) >= LEVEL_RANK.working) return { dim: "language", result: "pass", code, reason: `${languageName(code)}: you have ${level}.` };
+    return { dim: "language", result: "fail", code,
       reason: `Requires ${languageName(code)} ${r ? quote(r) : ""}; your profile ${level ? `says ${level}` : "does not list it"}.` };
   });
+  // Several languages asked for and you speak some of them: a gap to weigh, not an exclusion. Postings often list
+  // every language a team uses, and one strong language frequently carries an application.
+  const spoken = lines.filter((l) => l.result === "pass");
+  if (spoken.length) {
+    const have = spoken.map((l) => languageName(l.code)).join(", ");
+    for (const l of lines) if (l.result === "fail") { l.result = "gap"; l.reason += ` You do have ${have}, so this is a gap rather than an exclusion.`; }
+  }
+  return lines;
 }
 
 // The full assessment: an outcome and one line per dimension, each saying where it came from.
@@ -159,6 +169,7 @@ export function assess(opp, profile, { today, languageName } = {}) {
   const profileEmpty = !profile || (!(profile.work_rights || []).length && !profile.degree_level && !(profile.languages || []).length);
   let outcome;
   if (lines.some((l) => l.result === "fail")) outcome = "ineligible";
+  else if (lines.some((l) => l.result === "gap")) outcome = "language_gap";
   else if (work.result === "sponsorship") outcome = "sponsorship";
   else if (profileEmpty || !(opp.countries || []).length) outcome = "insufficient";
   else if (work.result === "pass" && !lines.some((l) => l.result === "unknown")) outcome = "eligible";

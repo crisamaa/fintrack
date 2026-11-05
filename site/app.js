@@ -1,6 +1,6 @@
 import {
   visibleRoles, sortRoles, safeUrl, formatDate, searchRoles, daysUntil, urgency, deadlineBucket, STAGES, stageById,
-  toRole, programStatus,
+  toRole, programStatus, DEADLINES,
 } from "./filters.js";
 import {
   createTracker, prefs, createProfile, createCrm, createDismissed, exportAll, importAll, RELATIONSHIP_STAGES,
@@ -22,8 +22,8 @@ const SECTORS = {
 const SEASONS = { summer: "Summer", spring: "Spring", winter: "Winter", off_cycle: "Off-cycle", insight: "Insight week",
   working_student: "Working student", part_time: "Part-time", graduate: "Graduate", unknown: "—" };
 const LIFECYCLE = { pending: "unconfirmed", unavailable: "source failing", unknown: "unknown", expired: "expired" };
-const ELIG_SHORT = { eligible: "Eligible", potential: "Possible", sponsorship: "Sponsorship", ineligible: "Ineligible",
-  insufficient: "Unknown" };
+const ELIG_SHORT = { eligible: "Eligible", potential: "Possible", sponsorship: "Sponsorship", language_gap: "Language gap",
+  ineligible: "Ineligible", insufficient: "Unknown" };
 const HEALTH = { failing: "Failing", blocked: "Blocked", gone: "Gone", degraded: "Degraded", unknown: "Not checked yet",
   ok: "Working", disabled: "Disabled" };
 const PIPELINE = STAGES.filter((s) => s.rank >= 0); // saved → offer, the stepper
@@ -81,8 +81,22 @@ const state = {
     seasons: new Set(saved.filters?.seasons || []),
     languages: new Set(saved.filters?.languages || []),
     eligibility: new Set(saved.filters?.eligibility || []),
+    firms: new Set(saved.filters?.firms || []),
+    years: new Set(saved.filters?.years || []),
   },
+  deadline: saved.deadline || "any",           // any | 7 | 14 | 30 | dated | rolling
+  newOnly: saved.newOnly ?? false,
+  untrackedOnly: saved.untrackedOnly ?? false,
+  languageMode: saved.languageMode || "all",   // all | any
   firmFilter: saved.firmFilter || "all",       // all | live | prospects | uncovered
+  firmFilters: {
+    sectors: new Set(saved.firmFilters?.sectors || []),
+    countries: new Set(saved.firmFilters?.countries || []),
+  },
+  hiddenCols: new Set(saved.hiddenCols || []),  // Discover columns the user switched off
+  wrap: saved.wrap ?? true,                     // long text wraps onto two lines instead of being cut
+  colWidths: saved.colWidths || {},             // { view: { column: px } } set by dragging a column edge
+  detailWidth: saved.detailWidth || null,       // px, set by dragging the detail pane's edge
   sourceHealth: new Set(saved.sourceHealth || []),
   sort: saved.sort || { key: "closes", dir: "asc" },
   theme: saved.theme || document.documentElement.dataset.theme || "ledger",
@@ -95,13 +109,18 @@ function savePrefs() {
   prefs.save({
     theme: state.theme, openOnly: state.openOnly, trackedOnly: state.trackedOnly, sort: state.sort,
     confirmedOnly: state.confirmedOnly, showHidden: state.showHidden, firmFilter: state.firmFilter,
-    sourceHealth: [...state.sourceHealth],
+    sourceHealth: [...state.sourceHealth], deadline: state.deadline, newOnly: state.newOnly,
+    untrackedOnly: state.untrackedOnly, languageMode: state.languageMode, hiddenCols: [...state.hiddenCols],
+    wrap: state.wrap, colWidths: state.colWidths, detailWidth: state.detailWidth,
     filters: Object.fromEntries(Object.entries(state.filters).map(([k, v]) => [k, [...v]])),
+    firmFilters: Object.fromEntries(Object.entries(state.firmFilters).map(([k, v]) => [k, [...v]])),
   });
 }
 
 // --- tiny DOM helper ------------------------------------------------------------------------------------------------
 const $ = (sel, root = document) => root.querySelector(sel);
+// replaceChildren, skipping null/false so optional sections never render as the text "null".
+const fill = (el, ...children) => el.replaceChildren(...children.flat().filter((c) => c !== null && c !== undefined && c !== false));
 function h(tag, attrs, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -111,7 +130,7 @@ function h(tag, attrs, ...children) {
     else if (k === "dataset") Object.assign(e.dataset, v);
     else e.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of children.flat()) if (c !== null && c !== undefined && c !== false) e.append(c);
+  for (const c of children.flat(Infinity)) if (c !== null && c !== undefined && c !== false) e.append(c);
   return e;
 }
 const svgStar = (filled) => {
@@ -262,93 +281,180 @@ function renderCounts() {
 }
 
 // --- toolbar --------------------------------------------------------------------------------------------------------
-function optionCounts(key, getter) {
+function optionCounts(getter, items = null) {
   const counts = new Map();
-  for (const r of state.roles) {
-    if (state.openOnly && r.status !== "open") continue;
-    if (!state.showHidden && (r.excluded_reason || r.dismissed)) continue;
+  for (const r of items || state.roles) {
+    if (!items && state.openOnly && r.status !== "open") continue;
+    if (!items && !state.showHidden && (r.excluded_reason || r.dismissed)) continue;
     for (const v of getter(r)) counts.set(v, (counts.get(v) || 0) + 1);
   }
   return counts;
 }
 
-function filterMenu(key, label, getter, nameOf, hint) {
-  const sel = state.filters[key];
-  const counts = optionCounts(key, getter);
-  const values = [...new Set([...counts.keys(), ...sel])].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
-  const menu = h("details", { class: `menu${sel.size ? " active" : ""}` },
+// A checkbox menu. `sel` is the Set it edits; `after` re-renders. Marked with data-key so it can be reopened.
+function checkMenu(key, label, { sel, counts, nameOf, hint, extra, after, sortBy = "name" }) {
+  const values = [...new Set([...counts.keys(), ...sel])].sort((a, b) => sortBy === "count"
+    ? (counts.get(b) || 0) - (counts.get(a) || 0) || nameOf(a).localeCompare(nameOf(b))
+    : nameOf(a).localeCompare(nameOf(b)));
+  return h("details", { class: `menu${sel.size ? " active" : ""}`, dataset: { key } },
     h("summary", { "aria-label": `${label} filter${sel.size ? `, ${sel.size} selected` : ""}` },
       label, sel.size ? h("span", { class: "badge" }, String(sel.size)) : null),
     h("div", { class: "menu-pop", role: "group", "aria-label": label },
+      values.length > 12 ? h("input", { class: "menu-find", type: "search", placeholder: `Find ${label.toLowerCase()}…`,
+        "aria-label": `Find ${label.toLowerCase()}`, oninput: (ev) => {
+          const q = ev.target.value.toLowerCase();
+          ev.target.parentElement.querySelectorAll(".opt").forEach((o) => { o.hidden = !o.textContent.toLowerCase().includes(q); });
+        } }) : null,
+      extra || null,
       values.length ? values.map((v) => h("label", { class: "opt" },
         h("input", {
           type: "checkbox", checked: sel.has(v),
-          onchange: (ev) => { ev.target.checked ? sel.add(v) : sel.delete(v); savePrefs(); renderView(); renderToolbar(key); },
+          onchange: (ev) => { ev.target.checked ? sel.add(v) : sel.delete(v); savePrefs(); after(key); },
         }),
         h("span", null, nameOf(v)),
         h("span", { class: "num" }, String(counts.get(v) || 0)),
       )) : h("p", { class: "hint" }, "No values yet."),
       hint ? h("p", { class: "hint" }, hint) : null,
       sel.size ? h("div", { class: "menu-actions" },
-        h("button", { class: "link", type: "button", onclick: () => { sel.clear(); savePrefs(); renderView(); renderToolbar(key); } }, "Clear")) : null,
+        h("button", { class: "link", type: "button", onclick: () => { sel.clear(); savePrefs(); after(key); } }, "Clear")) : null,
     ));
-  return menu;
+}
+
+// A single-choice menu.
+function radioMenu(key, label, { options, value, set, defaultValue }) {
+  const active = value !== defaultValue;
+  return h("details", { class: `menu${active ? " active" : ""}`, dataset: { key } },
+    h("summary", null, active ? options[value] : label),
+    h("div", { class: "menu-pop", role: "radiogroup", "aria-label": label }, Object.entries(options).map(([k, text]) =>
+      h("label", { class: "opt" }, h("input", { type: "radio", name: `menu-${key}`, checked: value === k,
+        onchange: () => set(k) }), h("span", null, text), h("span")))));
+}
+
+function filterMenu(key, label, getter, nameOf, hint, extra) {
+  return checkMenu(key, label, { sel: state.filters[key], counts: optionCounts(getter), nameOf, hint, extra,
+    after: (k) => { renderView(); renderToolbar(k); } });
+}
+
+function toggle(label, checked, onchange, title) {
+  return h("label", { class: "toggle", title }, h("input", { type: "checkbox", checked, onchange: (ev) => onchange(ev.target.checked) }), label);
+}
+
+const discoverFiltersActive = () => Object.values(state.filters).some((s) => s.size) || state.deadline !== "any"
+  || state.newOnly || state.untrackedOnly;
+function clearDiscoverFilters() {
+  Object.values(state.filters).forEach((s) => s.clear());
+  state.deadline = "any"; state.newOnly = false; state.untrackedOnly = false;
+}
+
+// Secondary on/off filters for Discover, grouped so the toolbar stays on one line.
+function showMenu() {
+  const items = [
+    ["newOnly", "New this week", "Only roles first found in the last 7 days"],
+    ["untrackedOnly", "Not tracked yet", "Hide roles already in your pipeline"],
+    ["confirmedOnly", "Confirmed only", "Hide postings found by search and not yet seen on the employer's own site"],
+    ["showHidden", "Show hidden", "Also show postings you dismissed and ones the tracker excluded"],
+  ];
+  const on = items.filter(([k]) => state[k]).length;
+  return h("details", { class: `menu${on ? " active" : ""}`, dataset: { key: "show" } },
+    h("summary", { "aria-label": `Show options${on ? `, ${on} on` : ""}` }, "Show", on ? h("span", { class: "badge" }, String(on)) : null),
+    h("div", { class: "menu-pop", role: "group", "aria-label": "Show" }, items.map(([k, label, hint]) =>
+      h("label", { class: "opt", title: hint }, h("input", { type: "checkbox", checked: state[k],
+        onchange: (ev) => { state[k] = ev.target.checked; savePrefs(); renderView(); renderToolbar("show"); } }),
+      h("span", null, label), h("span")))));
+}
+
+// Columns the user can switch off in Discover, and the wrap setting. Firm, Role and Left always show.
+const OPTIONAL_COLS = { loc: "Location", season: "Intake", sector: "Sector", lang: "Languages", fit: "Fit",
+  closes: "Closing date", status: "Status" };
+function viewMenu() {
+  const rerender = () => { savePrefs(); renderView(); renderToolbar("view"); };
+  const widthKeys = Object.keys(state.colWidths).filter((k) => k.startsWith(state.view + ":") && Object.keys(state.colWidths[k]).length);
+  return h("details", { class: "menu", dataset: { key: "view" } },
+    h("summary", { title: "Columns, text wrapping and widths" }, "View"),
+    h("div", { class: "menu-pop", role: "group", "aria-label": "View" },
+      h("label", { class: "opt" }, h("input", { type: "checkbox", checked: state.wrap,
+        onchange: (ev) => { state.wrap = ev.target.checked; rerender(); } }), h("span", null, "Wrap long text"), h("span")),
+      state.view === "discover" ? [h("p", { class: "hint" }, "Columns"),
+        Object.entries(OPTIONAL_COLS).map(([id, label]) => h("label", { class: "opt" },
+          h("input", { type: "checkbox", checked: !state.hiddenCols.has(id),
+            onchange: (ev) => { ev.target.checked ? state.hiddenCols.delete(id) : state.hiddenCols.add(id); rerender(); } }),
+          h("span", null, label), h("span")))] : null,
+      h("p", { class: "hint" }, "Drag a column's edge to resize it; double-click the edge to fit it to its content again."),
+      h("div", { class: "menu-actions" },
+        h("button", { class: "link", type: "button", disabled: !widthKeys.length && !(state.view === "discover" && state.hiddenCols.size) ? true : null,
+          onclick: () => { widthKeys.forEach((k) => delete state.colWidths[k]); if (state.view === "discover") state.hiddenCols.clear(); rerender(); } },
+        "Reset to default")),
+    ));
 }
 
 function renderToolbar(keepOpen) {
   const box = $("#filters");
   box.replaceChildren();
   if (state.view === "discover") {
-    const active = Object.values(state.filters).some((s) => s.size);
+    const firmNames = new Map(state.roles.map((r) => [r.firm_id, r.firm_name]));
     box.append(...[
       filterMenu("countries", "Country", (r) => r.countries || [], countryName),
       filterMenu("sectors", "Sector", (r) => [r.sector], (v) => SECTORS[v] || v),
+      filterMenu("firms", "Firm", (r) => [r.firm_id], (v) => firmNames.get(v) || v),
       filterMenu("seasons", "Season", (r) => [r.season], (v) => (v === "unknown" ? "Not stated" : SEASONS[v] || v)),
+      filterMenu("years", "Year", (r) => [r.year ? String(r.year) : "none"], (v) => (v === "none" ? "Not stated" : v)),
       filterMenu("languages", "Language", (r) => r.languages_required || [], languageName,
-        "Shows roles you qualify for: any role needing a language you have not ticked is hidden."),
-      filterMenu("eligibility", "Eligibility", (r) => [r.eligibility], (v) => OUTCOMES[v] || v,
+        state.languageMode === "any"
+          ? "Shows roles needing at least one ticked language. Roles where you lack one of them are flagged “Language gap” in Fit."
+          : "Shows roles you fully qualify for: any role needing a language you have not ticked is hidden.",
+        h("label", { class: "opt opt-mode" }, h("input", { type: "checkbox", checked: state.languageMode === "any",
+          onchange: (ev) => { state.languageMode = ev.target.checked ? "any" : "all"; savePrefs(); renderView(); renderToolbar("languages"); } }),
+        h("span", null, "Include partial matches"), h("span"))),
+      filterMenu("eligibility", "Fit", (r) => [r.eligibility], (v) => OUTCOMES[v] || v,
         "Assessed in this browser against your Profile. Uncertain roles are never hidden unless you choose to."),
-      h("label", { class: "toggle" }, h("input", {
-        type: "checkbox", checked: state.openOnly,
-        onchange: (ev) => { state.openOnly = ev.target.checked; savePrefs(); renderView(); renderToolbar(); },
-      }), "Open only"),
-      h("label", { class: "toggle", title: "Hide postings found by search that are not yet confirmed on the employer's own site" },
-        h("input", { type: "checkbox", checked: state.confirmedOnly,
-          onchange: (ev) => { state.confirmedOnly = ev.target.checked; savePrefs(); renderView(); } }), "Confirmed only"),
-      h("label", { class: "toggle", title: "Also show postings you dismissed and ones the tracker excluded (not an internship, or outside your countries)" },
-        h("input", { type: "checkbox", checked: state.showHidden,
-          onchange: (ev) => { state.showHidden = ev.target.checked; savePrefs(); renderView(); } }), "Hidden"),
-      active ? h("button", {
+      radioMenu("deadline", "Deadline", { options: { any: "Any deadline", ...DEADLINES }, value: state.deadline, defaultValue: "any",
+        set: (v) => { state.deadline = v; savePrefs(); renderView(); renderToolbar(); } }),
+      toggle("Open only", state.openOnly, (v) => { state.openOnly = v; savePrefs(); renderView(); renderToolbar(); }),
+      showMenu(),
+      viewMenu(),
+      discoverFiltersActive() ? h("button", {
         class: "btn ghost clear", type: "button",
-        onclick: () => { Object.values(state.filters).forEach((s) => s.clear()); savePrefs(); renderView(); renderToolbar(); },
+        onclick: () => { clearDiscoverFilters(); savePrefs(); renderView(); renderToolbar(); },
       }, "Clear filters") : null,
     ].filter(Boolean));
   } else if (state.view === "firms") {
-    box.append(firmMenu());
+    const after = (k) => { renderView(); renderToolbar(k); };
+    const emps = state.market.employers;
+    box.append(firmMenu(),
+      checkMenu("firm-sectors", "Sector", { sel: state.firmFilters.sectors, counts: optionCounts((e) => e.sectors || [], emps),
+        nameOf: (v) => SECTORS[v] || v, after }),
+      checkMenu("firm-countries", "Country", { sel: state.firmFilters.countries, counts: optionCounts((e) => e.countries || [], emps),
+        nameOf: countryName, after }),
+      viewMenu());
   } else if (state.view === "sources") {
-    box.append(healthMenu());
+    box.append(healthMenu(), viewMenu());
   } else if (state.view === "deadlines") {
-    box.append(h("label", { class: "toggle" }, h("input", {
-      type: "checkbox", checked: state.trackedOnly,
-      onchange: (ev) => { state.trackedOnly = ev.target.checked; savePrefs(); renderView(); },
-    }), "Tracked only"));
+    box.append(toggle("Tracked only", state.trackedOnly, (v) => { state.trackedOnly = v; savePrefs(); renderView(); }), viewMenu());
+  } else if (state.view !== "profile") {
+    box.append(viewMenu());
   }
   if (keepOpen) {
-    const menus = box.querySelectorAll(".menu");
-    const idx = ["countries", "sectors", "seasons", "languages", "eligibility"].indexOf(keepOpen);
-    if (menus[idx]) menus[idx].open = true;
+    const m = box.querySelector(`.menu[data-key="${CSS.escape(keepOpen)}"]`);
+    if (m) m.open = true;
   }
 }
 
 // --- tables ---------------------------------------------------------------------------------------------------------
+// Columns: [sortKey, label, class, default width, id]. The column with no width takes the remaining space; the
+// others are fitted to their content after rendering (see autofit) unless the user has dragged them.
 function header(cols) {
-  return h("thead", null, h("tr", null, cols.map(([key, label, cls, width]) => {
+  return h("thead", null, h("tr", null, cols.map(([key, label, cls, width, id], i) => {
     const sortable = key && state.view === "discover";
     const sorted = sortable && state.sort.key === key;
+    const col = id || key || (label ? label.toLowerCase() : `c${i}`);
+    const fixed = cls?.includes("c-star");
     return h("th", {
       class: cls, scope: "col", style: width ? `width:${width}` : null,
+      dataset: { col, ...(width ? {} : { flex: "1" }), ...(fixed ? { fixed: "1" } : {}) },
       "aria-sort": sorted ? (state.sort.dir === "asc" ? "ascending" : "descending") : null,
-    }, sortable ? h("button", {
+    }, fixed || !width ? null : h("span", { class: "col-resize", "aria-hidden": "true", title: "Drag to resize · double-click to fit",
+      onpointerdown: startResize, ondblclick: (ev) => resetColumn(ev, col), onclick: (ev) => ev.stopPropagation() }),
+    sortable ? h("button", {
       type: "button",
       onclick: () => {
         const first = key === "match" ? "desc" : "asc";  // best fit first
@@ -357,6 +463,103 @@ function header(cols) {
       },
     }, label) : label || h("span", { class: "visually-hidden" }, "Shortlist"));
   })));
+}
+
+// --- column fitting and resizing ---------------------------------------------------------------------------------
+// Each column is sized to its content (95th percentile of its cells, so one very long value does not take over),
+// the flexible column (Role) gets the rest, and if that leaves it too narrow the others give way proportionally.
+// Widths the user dragged are kept per view and table.
+const tableKey = (table) => `${state.view}:${table.getAttribute("aria-label") || ""}`;
+let measureCtx;
+function longestWord(cells) {
+  if (!cells.length) return 0;
+  measureCtx ||= document.createElement("canvas").getContext("2d");
+  const cs = getComputedStyle(cells[0]);
+  measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  let max = 0;
+  for (const td of cells) for (const w of td.textContent.split(/\s+/)) if (w.length > 3) max = Math.max(max, measureCtx.measureText(w).width);
+  return Math.ceil(max);
+}
+const WRAPPABLE = "td.c-role, td.c-firm, td.col-loc, td.col-sector, td.c-loc";
+function autofit(table) {
+  const head = table.tHead?.rows[0];
+  if (!head || getComputedStyle(table.tHead).display === "none") return;
+  const ths = [...head.cells];
+  const visible = ths.map((th) => getComputedStyle(th).display !== "none");
+  const flex = ths.findIndex((th) => th.dataset.flex);
+  const saved = state.colWidths[tableKey(table)] || {};
+  table.classList.remove("wrap");
+  table.classList.add("measuring");
+  const sample = [...table.tBodies[0].rows].filter((tr) => !tr.classList.contains("group-row")).slice(0, 250);
+  // Text columns (firm, place, sector) may wrap, so they size to the 95th percentile and can give way; short
+  // values (dates, days, fit, status) size to their longest value and are never cut.
+  const floor = [];
+  const want = ths.map((th, i) => {
+    floor[i] = 0;
+    if (!visible[i] || i === flex) return 0;
+    if (saved[th.dataset.col]) return saved[th.dataset.col];
+    if (th.dataset.fixed) return (floor[i] = parseFloat(th.style.width) || th.offsetWidth);
+    const cells = sample.map((tr) => tr.cells[i]).filter(Boolean);
+    // scrollWidth leaves out the end padding of overflowing content in Chromium, so add it back.
+    const padEnd = (el) => (el ? parseFloat(getComputedStyle(el).paddingRight) || 0 : 0);
+    const tdPad = padEnd(cells[0]);
+    const thW = th.scrollWidth + padEnd(th);
+    const ws = cells.map((td) => td.scrollWidth + tdPad).sort((a, b) => a - b);
+    const textual = cells.some((td) => td.matches(WRAPPABLE));
+    const pick = (q) => (ws.length ? ws[Math.min(ws.length - 1, Math.floor(ws.length * q))] : 0);
+    const w = Math.min(Math.max(thW, textual ? pick(0.95) : pick(1)) + 2, 360);
+    // A wrapping column may shrink, but never below its longest single word.
+    floor[i] = textual ? Math.min(w, Math.max(thW + 2, longestWord(cells) + tdPad * 2 + 2)) : w;
+    return w;
+  });
+  table.classList.remove("measuring");
+  const avail = table.clientWidth;
+  const minFlex = flex >= 0 && visible[flex] ? Math.min(420, Math.max(220, avail * 0.32)) : 0;
+  const used = want.reduce((a, b) => a + b, 0);
+  if (used + minFlex > avail) {
+    // Shrink the auto-sized columns (not the ones the user set) towards their header width.
+    const free = ths.map((th, i) => (visible[i] && i !== flex && !saved[th.dataset.col] ? Math.max(0, want[i] - floor[i]) : 0));
+    const room = free.reduce((a, b) => a + b, 0);
+    const k = room ? Math.min(1, (used + minFlex - avail) / room) : 0;
+    free.forEach((f, i) => { want[i] -= Math.round(f * k); });
+  }
+  ths.forEach((th, i) => { if (visible[i] && i !== flex) th.style.width = `${want[i]}px`; });
+  if (flex >= 0) ths[flex].style.width = "auto";
+  table.classList.toggle("wrap", state.wrap);
+}
+function fitTables() { document.querySelectorAll("#view .grid:not(.skeleton)").forEach(autofit); }
+
+let resizing = null;
+function startResize(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  const th = ev.target.closest("th");
+  resizing = { th, table: th.closest("table"), x: ev.clientX, w: th.offsetWidth };
+  ev.target.setPointerCapture(ev.pointerId);
+  ev.target.addEventListener("pointermove", onResize);
+  ev.target.addEventListener("pointerup", endResize, { once: true });
+  document.body.classList.add("is-resizing");
+}
+function onResize(ev) {
+  if (!resizing) return;
+  resizing.th.style.width = `${Math.max(40, Math.round(resizing.w + ev.clientX - resizing.x))}px`;
+}
+function endResize(ev) {
+  ev.target.removeEventListener("pointermove", onResize);
+  document.body.classList.remove("is-resizing");
+  if (!resizing) return;
+  const key = tableKey(resizing.table);
+  state.colWidths[key] = { ...(state.colWidths[key] || {}), [resizing.th.dataset.col]: resizing.th.offsetWidth };
+  resizing = null;
+  savePrefs();
+  fitTables();
+}
+function resetColumn(ev, col) {
+  ev.stopPropagation();
+  const key = tableKey(ev.target.closest("table"));
+  if (state.colWidths[key]) delete state.colWidths[key][col];
+  savePrefs();
+  fitTables();
 }
 
 function roleRow(r, cells) {
@@ -384,6 +587,8 @@ function discoverRows() {
     countries: [...state.filters.countries], sectors: [...state.filters.sectors],
     seasons: [...state.filters.seasons], languages: [...state.filters.languages], openOnly: state.openOnly,
     eligibility: [...state.filters.eligibility], confirmedOnly: state.confirmedOnly, showHidden: state.showHidden,
+    firms: [...state.filters.firms], years: [...state.filters.years], deadline: state.deadline, newOnly: state.newOnly,
+    untrackedOnly: state.untrackedOnly, tracked: (id) => !!tracker.get(id), today: state.today, languageMode: state.languageMode,
   };
   const rows = searchRoles(visibleRoles(state.roles, filters), state.query);
   return sortRoles(rows, state.sort.key, state.sort.dir);
@@ -408,38 +613,26 @@ function renderDiscover(view) {
       h("button", { class: "btn", type: "button", onclick: resetDiscover }, "Clear search and filters")));
     return;
   }
-  const cols = [
-    [null, "", "c-star", "44px"],
-    ["firm_name", "Firm", null, "16%"],
-    ["title", "Role", null, null],
-    ["city", "Location", "col-loc", "13%"],
-    ["season", "Intake", "col-season", "108px"],
-    ["sector", "Sector", "col-sector", "128px"],
-    [null, "Lang.", "col-lang", "60px"],
-    ["match", "Fit", "col-fit", "96px"],
-    ["closes", "Closes", "r col-closes", "72px"],
-    [null, "Left", "r", "72px"],
-    [null, "Status", "col-status", "136px"],
+  // [sortKey, label, class, width, id, cell]. Optional columns can be switched off in the View menu.
+  const all = [
+    [null, "", "c-star", "44px", "star", (r) => h("td", { class: "c-star" }, starButton(r))],
+    ["firm_name", "Firm", null, "16%", "firm", (r) => h("td", { class: "c-firm firm", title: r.firm_name }, r.firm_name)],
+    ["title", "Role", null, null, "role", (r) => h("td", { class: "c-role", title: r.title }, h("span", { class: "role-title" }, r.title),
+      isNew(r) && r.status === "open" ? h("span", { class: "new" }, "new") : null, lifecycleTag(r))],
+    ["city", "Location", "col-loc", "13%", "loc", (r) => h("td", { class: "c-loc col-loc sub", title: placeOf(r) }, placeOf(r))],
+    ["season", "Intake", "col-season", "108px", "season", (r) => h("td", { class: "c-extra col-season sub" }, `${SEASONS[r.season] || "—"}${r.year ? " " + r.year : ""}`)],
+    ["sector", "Sector", "col-sector", "128px", "sector", (r) => h("td", { class: "c-extra col-sector sub", title: SECTORS[r.sector] || r.sector }, SECTORS[r.sector] || r.sector)],
+    [null, "Lang.", "col-lang", "60px", "lang", (r) => h("td", { class: "c-extra col-lang sub mono", title: (r.languages_required || []).map(languageName).join(", ") }, langCodes(r))],
+    ["match", "Fit", "col-fit", "96px", "fit", (r) => h("td", { class: "c-extra col-fit" }, eligTag(r))],
+    ["closes", "Closes", "r col-closes", "72px", "closes", (r) => h("td", { class: "c-extra col-closes r date" }, r.closes ? shortDate(r.closes) : "")],
+    [null, "Left", "r", "72px", "left", (r) => h("td", { class: "c-days r" }, daysCell(r.closes, { closed: r.status !== "open" }))],
+    [null, "Status", "col-status", "136px", "status", (r) => { const e = tracker.get(r.id); return h("td", { class: "c-extra col-status" }, e ? stageView(e.stage) : ""); }],
   ];
+  const shown = all.filter((c) => !state.hiddenCols.has(c[4]));
+  const cols = shown.map((c) => c.slice(0, 5));
   const tbody = h("tbody");
   const frag = document.createDocumentFragment();
-  for (const r of rows) {
-    const e = tracker.get(r.id);
-    frag.append(roleRow(r, [
-      h("td", { class: "c-star" }, starButton(r)),
-      h("td", { class: "c-firm firm", title: r.firm_name }, r.firm_name),
-      h("td", { class: "c-role", title: r.title }, h("span", { class: "role-title" }, r.title),
-        isNew(r) && r.status === "open" ? h("span", { class: "new" }, "new") : null, lifecycleTag(r)),
-      h("td", { class: "c-loc col-loc sub", title: placeOf(r) }, placeOf(r)),
-      h("td", { class: "c-extra col-season sub" }, `${SEASONS[r.season] || "—"}${r.year ? " " + r.year : ""}`),
-      h("td", { class: "c-extra col-sector sub" }, SECTORS[r.sector] || r.sector),
-      h("td", { class: "c-extra col-lang sub mono", title: (r.languages_required || []).map(languageName).join(", ") }, langCodes(r)),
-      h("td", { class: "c-extra col-fit" }, eligTag(r)),
-      h("td", { class: "c-extra col-closes r date" }, r.closes ? shortDate(r.closes) : ""),
-      h("td", { class: "c-days r" }, daysCell(r.closes, { closed: r.status !== "open" })),
-      h("td", { class: "c-extra col-status" }, e ? stageView(e.stage) : ""),
-    ]));
-  }
+  for (const r of rows) frag.append(roleRow(r, shown.map((c) => c[5](r))));
   tbody.append(frag);
   view.append(h("table", { class: "grid", "aria-label": "Internship postings" }, header(cols), tbody));
 }
@@ -661,7 +854,7 @@ function renderProgramDetail(pane, id) {
   const e = state.employers.get(p.employer_id);
   const st = programStatus(p, state.today);
   const opps = (p.opportunity_ids || []).map((x) => state.byId.get(x)).filter(Boolean);
-  pane.replaceChildren(
+  fill(pane, 
     detailHead(e?.name || p.employer_id, p.name, [extLink(p.official_url, "Official page ↗", true),
       e ? h("a", { class: "btn", href: "#firms/" + e.id }, "Firm profile") : null].filter(Boolean)),
     h("dl", { class: "facts" }, [["Status", st.label], ["Format", SEASONS[p.type] || p.type], ["Division", p.division || "—"],
@@ -713,6 +906,9 @@ function renderFirms(view) {
   if (state.firmFilter === "live") rows = rows.filter((e) => e.open > 0);
   if (state.firmFilter === "prospects") rows = rows.filter((e) => state.prospects.has(e.id));
   if (state.firmFilter === "uncovered") rows = rows.filter((e) => firmHealth(e).key !== "ok");
+  const { sectors: fs, countries: fc } = state.firmFilters;
+  if (fs.size) rows = rows.filter((e) => (e.sectors || []).some((x) => fs.has(x)));
+  if (fc.size) rows = rows.filter((e) => (e.countries || []).some((x) => fc.has(x)));
   rows.sort((a, b) => b.open - a.open || a.name.localeCompare(b.name));
   const discovered = state.market.employers.filter((e) => e.discovered_via !== "seed").length;
   setMeta([[rows.length, rows.length === 1 ? "firm" : "firms"], [state.market.employers.filter((e) => e.open > 0).length, "hiring now"],
@@ -748,7 +944,7 @@ function renderFirmDetail(pane, id) {
   const roles = state.roles.filter((r) => r.firm_id === id && !r.excluded_reason);
   const progs = [...state.programs.values()].filter((p) => p.employer_id === id);
   const srcs = (e.source_ids || []).map(sourceById).filter(Boolean);
-  pane.replaceChildren(
+  fill(pane, 
     detailHead((e.countries || []).map(countryName).join(" · ") || "Firm", e.name, [extLink(e.website, "Website ↗", true),
       rel ? null : h("button", { class: "btn", type: "button", onclick: () => { crm.start(e); toast(`${e.name} added to Outreach`); renderDetail(); } }, "Track in Outreach")].filter(Boolean)),
     rel ? relationshipSection(e, rel, prospect) : null,
@@ -1013,7 +1209,7 @@ function renderSourceDetail(pane, id) {
   const s = sourceById(id);
   if (!s) { closeDetail(); return; }
   const e = state.employers.get(s.employer_id);
-  pane.replaceChildren(
+  fill(pane, 
     detailHead(e?.name || "Unassigned source", sourceLabel(s.id), [extLink(s.url, "Open source ↗", true),
       e ? h("a", { class: "btn", href: "#firms/" + e.id }, "Firm profile") : null].filter(Boolean)),
     h("dl", { class: "facts" }, [["Health", HEALTH[s.health]], ["Kind", `${s.kind} · ${s.category.replaceAll("_", " ")}`],
@@ -1034,11 +1230,22 @@ const LEVELS = ["basic", "working", "fluent", "native"];
 const LANG_OPTIONS = ["en", "de", "fr", "it", "es", "pt", "nl", "sv", "da", "pl", "zh"];
 const TYPE_OPTIONS = ["summer", "off_cycle", "insight", "working_student", "part_time", "graduate", "spring", "winter"];
 
+function redrawProfile() {
+  if (state.view !== "profile") return;
+  const view = $("#view");
+  const controls = () => [...view.querySelectorAll("input, select, textarea, button")];
+  const i = controls().indexOf(document.activeElement);
+  renderView();
+  if (i >= 0) controls()[i]?.focus({ preventScroll: true });
+}
+
 function renderProfile(view) {
   const p = profile.get();
   $("#view-meta").textContent = "Stored only in this browser. Use Export in the sidebar to back it up.";
   state.rowIds = [];
-  const set = (patch) => { profile.set({ ...profile.get(), ...patch }); };
+  // Save, then redraw so new or removed rows appear and every control reads the saved profile (not this render's
+  // copy). Deferred one tick so focus has moved (e.g. Tab after a text field), then restored to the same control.
+  const set = (patch) => { profile.set({ ...profile.get(), ...patch }); setTimeout(redrawProfile, 0); };
   const field = (label, input) => h("label", { class: "field" }, h("span", { class: "label" }, label), input);
   const text = (key, ph = "") => h("input", { type: "text", value: p[key] || "", placeholder: ph, onchange: (ev) => set({ [key]: ev.target.value.trim() }) });
   const select = (value, options, onchange, label) => h("select", { "aria-label": label, onchange: (ev) => onchange(ev.target.value || null) },
@@ -1104,6 +1311,7 @@ function renderView() {
   ({ discover: renderDiscover, pipeline: renderPipeline, deadlines: renderDeadlines, programs: renderPrograms,
     firms: renderFirms, outreach: renderOutreach, sources: renderSources, profile: renderProfile })[state.view](view);
   $("#toolbar").querySelector(".search").hidden = state.view === "profile";
+  fitTables();
   view.scrollTop = scroll;
   if (state.focusId && !state.rowIds.includes(state.focusId)) state.focusId = null;
   renderCounts();
@@ -1209,7 +1417,9 @@ function openDetail(id, { focus = true } = {}) {
   const pane = $("#detail");
   pane.hidden = false;
   renderDetail();
-  if (focus && window.matchMedia("(max-width: 1180px)").matches) pane.querySelector(".detail-close")?.focus();
+  // The table just got narrower: refit it and keep the chosen row in sight.
+  requestAnimationFrame(() => document.querySelector(`.grid tbody tr[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" }));
+  if (focus && window.matchMedia("(max-width: 900px)").matches) pane.querySelector(".detail-close")?.focus();
   syncHash();
 }
 
@@ -1248,7 +1458,7 @@ function renderDetail() {
   ];
   const program = role.program_id && state.programs.get(role.program_id);
   if (program) facts.push(["Program", h("a", { href: "#programs/" + program.id }, program.name)]);
-  pane.replaceChildren(
+  fill(pane, 
     h("header", { class: "detail-head" },
       h("div", { class: "detail-top" },
         h("span", { class: "detail-firm" }, role.firm_name),
@@ -1274,7 +1484,7 @@ function renderDetail() {
   );
 }
 
-const RESULT = { pass: "✓", fail: "✕", unknown: "?", sponsorship: "~", info: "·" };
+const RESULT = { pass: "✓", fail: "✕", gap: "!", unknown: "?", sponsorship: "~", info: "·" };
 function eligibilitySection(role) {
   const a = role.assessment;
   const fit = role.matchFactors || [];
@@ -1467,8 +1677,40 @@ async function load() {
   if (id) { focusRow(id, { scroll: true }); openDetail(decodeURIComponent(id), { focus: false }); }
 }
 
+// The detail pane's left edge can be dragged; the width is remembered.
+function applyDetailWidth() {
+  if (state.detailWidth) document.documentElement.style.setProperty("--detail-w", `${state.detailWidth}px`);
+  else document.documentElement.style.removeProperty("--detail-w");
+}
+function initDetailResize() {
+  const pane = $("#detail");
+  const grip = h("div", { class: "detail-resize", role: "separator", "aria-orientation": "vertical", "aria-label": "Resize details",
+    title: "Drag to resize · double-click to reset", tabindex: "0" });
+  pane.before(grip);
+  const clamp = (w) => Math.round(Math.min(Math.max(w, 300), window.innerWidth * 0.6));
+  grip.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault();
+    grip.setPointerCapture(ev.pointerId);
+    document.body.classList.add("is-resizing");
+    const move = (e) => { state.detailWidth = clamp(window.innerWidth - e.clientX); applyDetailWidth(); };
+    grip.addEventListener("pointermove", move);
+    grip.addEventListener("pointerup", () => { grip.removeEventListener("pointermove", move); document.body.classList.remove("is-resizing"); savePrefs(); fitTables(); }, { once: true });
+  });
+  grip.addEventListener("dblclick", () => { state.detailWidth = null; applyDetailWidth(); savePrefs(); fitTables(); });
+  grip.addEventListener("keydown", (ev) => {
+    const step = ev.key === "ArrowLeft" ? 24 : ev.key === "ArrowRight" ? -24 : 0;
+    if (!step) return;
+    ev.preventDefault();
+    state.detailWidth = clamp((state.detailWidth || pane.offsetWidth) + step); applyDetailWidth(); savePrefs(); fitTables();
+  });
+}
+
 function init() {
   applyTheme(state.theme);
+  applyDetailWidth();
+  initDetailResize();
+  let fitTimer;
+  new ResizeObserver(() => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTables, 80); }).observe($("#view"));
   document.querySelectorAll('input[name="theme"]').forEach((i) => i.addEventListener("change", () => applyTheme(i.value)));
   document.querySelectorAll(".nav a").forEach((a) => a.addEventListener("click", (ev) => { ev.preventDefault(); setView(a.dataset.view); }));
   $("#search").addEventListener("input", (ev) => onSearch(ev.target.value));
