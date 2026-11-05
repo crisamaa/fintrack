@@ -68,6 +68,22 @@ test("languages: missing from a filled profile excludes; empty profile is unknow
   assert.equal(assess(fr, { work_rights: swissProfile.work_rights }, { today: TODAY }).outcome, "potential");
 });
 
+test("languages: speaking some but not all of the required languages is a gap, not an exclusion", () => {
+  const enFr = opp({ languages: ["en", "fr"] });
+  const a = assess(enFr, swissProfile, { today: TODAY });
+  assert.equal(a.outcome, "language_gap");
+  const fr = a.lines.find((l) => l.code === "fr");
+  assert.equal(fr.result, "gap");
+  assert.match(fr.reason, /gap rather than an exclusion/);
+  assert.equal(assess(opp({ languages: ["fr", "it"] }), swissProfile, { today: TODAY }).outcome, "ineligible");
+  assert.equal(assess(opp({ languages: ["en", "de"] }), swissProfile, { today: TODAY }).outcome, "eligible");
+  // Another failing requirement still excludes.
+  const grad = opp({ languages: ["en", "fr"], requirements: [req("graduation_year", { years: [2027] })] });
+  assert.equal(assess(grad, swissProfile, { today: TODAY }).outcome, "ineligible");
+  const r = rank({ status: "open" }, { eligibility: "language_gap" });
+  assert.equal(r.score, -2);
+});
+
 test("empty profile or unknown country: insufficient information", () => {
   assert.equal(assess(opp({}), {}, { today: TODAY }).outcome, "insufficient");
   assert.equal(assess(opp({ countries: [] }), swissProfile, { today: TODAY }).outcome, "insufficient");

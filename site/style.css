@@ -142,7 +142,24 @@ kbd {
   height: 100vh;
   height: 100dvh;
 }
-.app.has-detail { grid-template-columns: 212px minmax(0, 1fr) min(420px, 38vw); }
+.app {
+  --detail-col: min(var(--detail-w, 400px), 60vw);
+  position: relative;
+}
+.app.has-detail { grid-template-columns: 212px minmax(0, 1fr) var(--detail-col); }
+/* Drag handle on the detail pane's left edge. */
+.detail-resize { display: none; }
+.app.has-detail .detail-resize {
+  display: block;
+  position: absolute;
+  top: 0; bottom: 0;
+  right: calc(var(--detail-col) - 3px);
+  width: 6px;
+  cursor: col-resize;
+  z-index: 31;
+}
+.detail-resize:hover, .detail-resize:focus-visible, .is-resizing .detail-resize { background: var(--line-strong); outline: none; }
+.is-resizing, .is-resizing * { cursor: col-resize !important; user-select: none; }
 
 /* rail */
 .rail {
@@ -319,6 +336,14 @@ kbd {
 .menu-pop .opt input { margin: 0; accent-color: var(--ink); }
 .menu-pop .opt .num { color: var(--muted); font-size: 11.5px; }
 .menu-pop .hint { margin: 6px 6px 2px; font-size: 11.5px; color: var(--muted); max-width: 240px; }
+.menu-pop .opt[hidden] { display: none; }
+.menu-pop .opt-mode { border-bottom: 1px solid var(--line); border-radius: 0; margin-bottom: 4px; padding-bottom: 8px; }
+.menu-find {
+  width: 100%; margin: 0 0 6px; padding: 5px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--bg); color: var(--ink);
+}
+.menu-find:focus { outline: none; border-color: var(--ink); }
+.menu-pop .link:disabled { opacity: .45; cursor: default; }
 .menu-pop .menu-actions { display: flex; justify-content: space-between; padding: 6px 6px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
 
 .toggle {
@@ -360,6 +385,23 @@ kbd {
 .grid th button:hover { color: var(--ink); }
 .grid th button:focus-visible { outline: 2px solid var(--accent); }
 .grid th[aria-sort] button { color: var(--ink); }
+/* column resize grip on a header's right edge */
+.col-resize { position: absolute; top: 6px; bottom: 6px; right: 0; width: 7px; cursor: col-resize; border-right: 1px solid transparent; }
+.grid th:hover .col-resize { border-right-color: var(--line-strong); }
+.col-resize:hover { border-right: 2px solid var(--ink-2) !important; }
+/* While autofit measures, columns shrink so each cell reports its content width. */
+.grid.measuring th:not([data-fixed]):not([data-flex]) { width: 1px !important; }
+/* Wrap mode: text columns wrap instead of being cut off (table layout only; the narrow card layout wraps anyway). */
+@container view (min-width: 561px) {
+  .grid.wrap td.c-role, .grid.wrap td.c-firm, .grid.wrap td.col-loc, .grid.wrap td.col-sector, .grid.wrap td.c-loc {
+    white-space: normal;
+    overflow-wrap: break-word;
+    text-overflow: clip;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    line-height: 1.35;
+  }
+}
 .grid th[aria-sort="ascending"] button::after { content: "↑"; font-family: var(--font-mono); }
 .grid th[aria-sort="descending"] button::after { content: "↓"; font-family: var(--font-mono); }
 .grid th.r, .grid td.r { text-align: right; }
@@ -475,6 +517,9 @@ kbd {
 .elig.ineligible { color: var(--muted); }
 .elig.ineligible::before { background: var(--accent); }
 .elig.potential::before { background: var(--ink-2); }
+.elig.language_gap { color: var(--soon); }
+.elig.language_gap::before { background: var(--soon); }
+.reasons .r-gap .mark { color: var(--soon); }
 .health-ok { color: var(--good); }
 .health-bad, .health-blocked { color: var(--accent); }
 .health-none { color: var(--muted); }
@@ -641,11 +686,15 @@ kbd {
 
 /* --- responsive ---------------------------------------------------------- */
 @media (max-width: 1180px) {
+  .app { --detail-col: min(var(--detail-w, 360px), 45vw); }
+}
+@media (max-width: 900px) {
   .app.has-detail { grid-template-columns: 212px minmax(0, 1fr); }
   .app.has-detail .detail {
-    position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); z-index: 30;
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--detail-w, 420px), 100vw); z-index: 30;
     box-shadow: -16px 0 40px -20px rgb(0 0 0 / .35);
   }
+  .app.has-detail .detail-resize { display: none; }
 }
 @media (max-width: 900px) {
   .bar { grid-template-columns: 1fr; }

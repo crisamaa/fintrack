@@ -3,7 +3,7 @@
 
 export const WEIGHTS = {
   sector: 3, country: 2, type: 2, priority_firm: 1, deadline_soon: 2, new: 1, unconfirmed: -1,
-  eligible: 2, sponsorship: 0, ineligible: -6, tracked: 1,
+  eligible: 2, sponsorship: 0, language_gap: -2, ineligible: -6, tracked: 1,
 };
 
 export function rank(opp, { prefs = {}, eligibility = null, today, tracked = false, daysUntil } = {}) {
@@ -24,7 +24,8 @@ export function rank(opp, { prefs = {}, eligibility = null, today, tracked = fal
   if (seen !== null && seen >= -6) add("new", WEIGHTS.new, "found in the last 7 days");
   if (opp.status === "pending") add("unconfirmed", WEIGHTS.unconfirmed, "not yet confirmed on the employer's own site");
   if (eligibility) add(eligibility, WEIGHTS[eligibility] || 0, {
-    eligible: "you are eligible", sponsorship: "needs sponsorship, which is offered", ineligible: "a stated requirement excludes you",
+    eligible: "you are eligible", sponsorship: "needs sponsorship, which is offered",
+    language_gap: "you speak only some of the languages it asks for", ineligible: "a stated requirement excludes you",
   }[eligibility] || "");
   if (tracked) add("tracked", WEIGHTS.tracked, "you are tracking it");
   return { score: factors.reduce((s, f) => s + f.points, 0), factors };

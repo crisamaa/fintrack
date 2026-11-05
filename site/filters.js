@@ -13,9 +13,27 @@ export function safeUrl(url) {
 
 const has = (selected, value) => !selected || selected.length === 0 || selected.includes(value);
 
+// Deadline filter values: within N days (open roles closing today..N days out), dated, or rolling (no date).
+export const DEADLINES = { "7": "Closes within 7 days", "14": "Closes within 14 days", "30": "Closes within 30 days",
+  dated: "Has a closing date", rolling: "Rolling / no date" };
+function deadlineMatch(r, deadline, today) {
+  if (!deadline || deadline === "any") return true;
+  if (deadline === "rolling") return !r.closes;
+  if (!r.closes) return false;
+  if (deadline === "dated") return true;
+  const d = daysUntil(r.closes, today);
+  return d !== null && d >= 0 && d <= Number(deadline);
+}
+
 export function visibleRoles(roles, { countries = [], sectors = [], seasons = [], languages = [], eligibility = [],
+  firms = [], years = [], deadline = "any", languageMode = "all", newOnly = false, untrackedOnly = false, tracked = null, today = null,
   openOnly = false, confirmedOnly = false, showHidden = false } = {}) {
   return roles.filter((r) => {
+    if (firms.length > 0 && !firms.includes(r.firm_id)) return false;
+    if (years.length > 0 && !years.includes(r.year ? String(r.year) : "none")) return false;
+    if (!deadlineMatch(r, deadline, today)) return false;
+    if (newOnly && !(r.first_seen && today && daysUntil(r.first_seen, today) >= -6)) return false;
+    if (untrackedOnly && tracked && tracked(r.id)) return false;
     if (openOnly && r.status !== "open") return false;
     if (confirmedOnly && r.lifecycle === "pending") return false;
     if (!showHidden && (r.excluded_reason || r.dismissed)) return false;
@@ -23,7 +41,12 @@ export function visibleRoles(roles, { countries = [], sectors = [], seasons = []
     if (sectors.length > 0 && !(r.sectors || [r.sector]).some((x) => sectors.includes(x))) return false;
     if (!has(seasons, r.season)) return false;
     if (countries.length > 0 && !(r.countries || []).some((c) => countries.includes(c))) return false;
-    if (languages.length > 0 && (r.languages_required || []).some((l) => !languages.includes(l))) return false;
+    const langs = r.languages_required || [];
+    if (languages.length > 0 && langs.length > 0) {
+      // "all": every required language is ticked. "any": at least one is (a partial match, flagged in Fit).
+      const ok = languageMode === "any" ? langs.some((l) => languages.includes(l)) : langs.every((l) => languages.includes(l));
+      if (!ok) return false;
+    }
     return true;
   });
 }

@@ -24,16 +24,18 @@ but never adds a confirmed one for you.
 | Outcome | When |
 | --- | --- |
 | Confirmed ineligible | a stated requirement excludes you (shown with the employer's words and your profile value) |
+| Partial language match | nothing else excludes you, but you speak only some of the languages it asks for (e.g. English and French, and you have English). Flagged, ranked lower, never treated as an exclusion |
 | Sponsorship route | no right to work there, but the employer states that it sponsors |
 | Confirmed eligible | a confirmed right to work in the role's country, and every stated requirement is met |
 | Potentially eligible | nothing excludes you, but something is unknown (e.g. no sponsorship statement) |
 | Insufficient information | the role's country is unknown, or the profile is empty |
 
-Silence about sponsorship never excludes a role. Every outcome is reversible in the list: the Eligibility filter is
+A role is ineligible on language only when you speak none of the languages it lists. Silence about sponsorship never
+excludes a role. Every outcome is reversible in the list: the Eligibility filter is
 off by default and filters only when you choose.
 
 ## Ranking
 
 `site/relevance.js` adds named points: your sectors (+3), countries (+2), formats (+2), a priority firm (+1), closing
-within 14 days (+2), new this week (+1), unconfirmed (−1), eligible (+2), ineligible (−6), tracked (+1). The detail
+within 14 days (+2), new this week (+1), unconfirmed (−1), eligible (+2), partial language match (−2), ineligible (−6), tracked (+1). The detail
 pane lists the factors behind each score. It orders the list; it is not a probability of an offer.

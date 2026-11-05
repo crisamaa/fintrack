@@ -126,3 +126,24 @@ test("visibleRoles hides excluded and dismissed unless asked, and filters eligib
   assert.deepEqual(visibleRoles([a, d], { ...none, confirmedOnly: true }).map((r) => r.id), ["a"]);
   assert.deepEqual(visibleRoles([a, d], { ...none, eligibility: ["potential"] }).map((r) => r.id), ["d"]);
 });
+
+test("language filter in 'any' mode keeps partial matches", () => {
+  const r = role({ languages_required: ["en", "fr"] });
+  assert.deepEqual(visibleRoles([r], { ...none, languages: ["en"] }), []);
+  assert.deepEqual(visibleRoles([r], { ...none, languages: ["en"], languageMode: "any" }), [r]);
+  assert.deepEqual(visibleRoles([r], { ...none, languages: ["de"], languageMode: "any" }), []);
+});
+test("firm, year, deadline, new and untracked filters", () => {
+  const today = "2026-11-04";
+  const a = role({ id: "a", firm_id: "f1", year: 2027, closes: "2026-11-08", first_seen: "2026-11-03" });
+  const b = role({ id: "b", firm_id: "f2", year: null, closes: null, first_seen: "2026-09-01" });
+  const c = role({ id: "c", firm_id: "f2", year: 2027, closes: "2026-12-20", first_seen: "2026-10-01" });
+  const ids = (xs) => xs.map((x) => x.id);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { firms: ["f2"] })), ["b", "c"]);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { years: ["none"] })), ["b"]);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { deadline: "7", today })), ["a"]);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { deadline: "dated", today })), ["a", "c"]);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { deadline: "rolling", today })), ["b"]);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { newOnly: true, today })), ["a"]);
+  assert.deepEqual(ids(visibleRoles([a, b, c], { untrackedOnly: true, tracked: (id) => id === "c" })), ["a", "b"]);
+});
