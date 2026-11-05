@@ -389,8 +389,13 @@ kbd {
 .col-resize { position: absolute; top: 6px; bottom: 6px; right: 0; width: 7px; cursor: col-resize; border-right: 1px solid transparent; }
 .grid th:hover .col-resize { border-right-color: var(--line-strong); }
 .col-resize:hover { border-right: 2px solid var(--ink-2) !important; }
-/* While autofit measures, columns shrink so each cell reports its content width. */
-.grid.measuring th:not([data-fixed]):not([data-flex]) { width: 1px !important; }
+/* Columns autofit dropped because the table could not show them in full. */
+.grid.drop-col-lang .col-lang, .grid.drop-col-sector .col-sector, .grid.drop-col-closes .col-closes,
+.grid.drop-col-updated .col-updated, .grid.drop-col-season .col-season, .grid.drop-col-what .col-what,
+.grid.drop-col-window .col-window, .grid.drop-col-status .col-status, .grid.drop-col-fit .col-fit,
+.grid.drop-col-loc .col-loc { display: none; }
+/* Hidden copy of a cell's content that autofit measures. */
+.probe { position: absolute; left: 0; top: 0; width: max-content; white-space: nowrap; visibility: hidden; pointer-events: none; }
 /* Wrap mode: text columns wrap instead of being cut off (table layout only; the narrow card layout wraps anyway). */
 @container view (min-width: 561px) {
   .grid.wrap td.c-role, .grid.wrap td.c-firm, .grid.wrap td.col-loc, .grid.wrap td.col-sector, .grid.wrap td.c-loc {
