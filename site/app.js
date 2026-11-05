@@ -379,7 +379,7 @@ function viewMenu() {
           h("input", { type: "checkbox", checked: !state.hiddenCols.has(id),
             onchange: (ev) => { ev.target.checked ? state.hiddenCols.delete(id) : state.hiddenCols.add(id); rerender(); } }),
           h("span", null, label), h("span")))] : null,
-      h("p", { class: "hint" }, "Drag a column's edge to resize it; double-click the edge to fit it to its content again."),
+      h("p", { class: "hint" }, "Columns that do not fit are hidden automatically (their details are in the side panel). Drag a column’s edge to resize it; double-click it to fit the content again."),
       h("div", { class: "menu-actions" },
         h("button", { class: "link", type: "button", disabled: !widthKeys.length && !(state.view === "discover" && state.hiddenCols.size) ? true : null,
           onclick: () => { widthKeys.forEach((k) => delete state.colWidths[k]); if (state.view === "discover") state.hiddenCols.clear(); rerender(); } },
@@ -481,50 +481,80 @@ function longestWord(cells) {
   return Math.ceil(max);
 }
 const WRAPPABLE = "td.c-role, td.c-firm, td.col-loc, td.col-sector, td.c-loc";
+// Content width of each cell, measured on a hidden max-content copy inside the cell, so it inherits the cell's
+// fonts and does not depend on how a browser reports overflow (which differs between Chromium, Safari and Firefox).
+function contentWidths(cells) {
+  const probes = cells.map((cell) => {
+    const probe = document.createElement("span");
+    probe.className = "probe";
+    probe.setAttribute("aria-hidden", "true");
+    for (const n of cell.childNodes) if (!n.classList?.contains("col-resize")) probe.append(n.cloneNode(true));
+    cell.append(probe);
+    return probe;
+  });
+  const ws = probes.map((p) => Math.ceil(p.getBoundingClientRect().width));
+  probes.forEach((p) => p.remove());
+  return ws;
+}
+const hPad = (el) => { if (!el) return 0; const cs = getComputedStyle(el); return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0); };
+
+// Columns dropped first when a table does not fit, least useful first. Their values stay in the detail pane.
+const DROP_ORDER = ["col-lang", "col-sector", "col-closes", "col-updated", "col-season", "col-what", "col-window",
+  "col-status", "col-fit", "col-loc"];
 function autofit(table) {
   const head = table.tHead?.rows[0];
+  DROP_ORDER.forEach((c) => table.classList.remove("drop-" + c));
   if (!head || getComputedStyle(table.tHead).display === "none") return;
+  const avail = Math.floor((table.parentElement || table).clientWidth);
+  if (!avail) return;
   const ths = [...head.cells];
   const visible = ths.map((th) => getComputedStyle(th).display !== "none");
-  const flex = ths.findIndex((th) => th.dataset.flex);
+  let flex = ths.findIndex((th, i) => th.dataset.flex && visible[i]);
+  if (flex < 0) flex = visible.lastIndexOf(true);
   const saved = state.colWidths[tableKey(table)] || {};
-  table.classList.remove("wrap");
-  table.classList.add("measuring");
   const sample = [...table.tBodies[0].rows].filter((tr) => !tr.classList.contains("group-row")).slice(0, 250);
-  // Text columns (firm, place, sector) may wrap, so they size to the 95th percentile and can give way; short
-  // values (dates, days, fit, status) size to their longest value and are never cut.
-  const floor = [];
+  // Text columns (firm, place, sector) may wrap, so they size to the 95th percentile and can give way down to their
+  // longest word; short values (dates, days, fit, status) size to their longest value.
+  const floor = ths.map(() => 0);
   const want = ths.map((th, i) => {
-    floor[i] = 0;
     if (!visible[i] || i === flex) return 0;
-    if (saved[th.dataset.col]) return saved[th.dataset.col];
-    if (th.dataset.fixed) return (floor[i] = parseFloat(th.style.width) || th.offsetWidth);
+    if (th.dataset.fixed) return (floor[i] = parseFloat(th.style.width) || 44);
     const cells = sample.map((tr) => tr.cells[i]).filter(Boolean);
-    // scrollWidth leaves out the end padding of overflowing content in Chromium, so add it back.
-    const padEnd = (el) => (el ? parseFloat(getComputedStyle(el).paddingRight) || 0 : 0);
-    const tdPad = padEnd(cells[0]);
-    const thW = th.scrollWidth + padEnd(th);
-    const ws = cells.map((td) => td.scrollWidth + tdPad).sort((a, b) => a - b);
+    const pad = hPad(cells[0]);
+    const thW = contentWidths([th])[0] + hPad(th) + 2;
+    const ws = contentWidths(cells).map((w) => w + pad + 2).sort((x, y) => x - y);
     const textual = cells.some((td) => td.matches(WRAPPABLE));
     const pick = (q) => (ws.length ? ws[Math.min(ws.length - 1, Math.floor(ws.length * q))] : 0);
-    const w = Math.min(Math.max(thW, textual ? pick(0.95) : pick(1)) + 2, 360);
-    // A wrapping column may shrink, but never below its longest single word.
-    floor[i] = textual ? Math.min(w, Math.max(thW + 2, longestWord(cells) + tdPad * 2 + 2)) : w;
-    return w;
+    const auto = Math.min(Math.max(thW, textual ? pick(0.95) : pick(1)), 360);
+    floor[i] = textual ? Math.min(auto, Math.max(thW, longestWord(cells) + pad + 2)) : auto;
+    if (saved[th.dataset.col]) { floor[i] = Math.min(floor[i], saved[th.dataset.col]); return saved[th.dataset.col]; }
+    return auto;
   });
-  table.classList.remove("measuring");
-  const avail = table.clientWidth;
-  const minFlex = flex >= 0 && visible[flex] ? Math.min(420, Math.max(220, avail * 0.32)) : 0;
-  const used = want.reduce((a, b) => a + b, 0);
-  if (used + minFlex > avail) {
-    // Shrink the auto-sized columns (not the ones the user set) towards their header width.
-    const free = ths.map((th, i) => (visible[i] && i !== flex && !saved[th.dataset.col] ? Math.max(0, want[i] - floor[i]) : 0));
-    const room = free.reduce((a, b) => a + b, 0);
-    const k = room ? Math.min(1, (used + minFlex - avail) / room) : 0;
-    free.forEach((f, i) => { want[i] -= Math.round(f * k); });
+  // The flexible column (Role) always keeps a usable width; the others give way, first those you did not size
+  // yourself, then those you did, and as a last resort all of them proportionally.
+  const minFlex = Math.round(Math.min(420, Math.max(200, avail * 0.3)));
+  const total = () => want.reduce((x, y) => x + y, 0);
+  const shrink = (pick) => {
+    const over = total() + minFlex - avail;
+    if (over <= 0) return;
+    const free = want.map((w, i) => (pick(i) ? Math.max(0, w - floor[i]) : 0));
+    const room = free.reduce((x, y) => x + y, 0);
+    if (room) free.forEach((f, i) => { want[i] -= Math.ceil(f * Math.min(1, over / room)); });
+  };
+  const isSaved = (i) => !!saved[ths[i].dataset.col];
+  shrink((i) => !isSaved(i) && !ths[i].dataset.fixed);
+  shrink((i) => isSaved(i));
+  // Still too wide: rather than cutting values, drop whole columns in DROP_ORDER until the rest fit.
+  for (const cls of DROP_ORDER) {
+    if (total() + minFlex <= avail) break;
+    const i = ths.findIndex((th, j) => visible[j] && j !== flex && th.classList.contains(cls));
+    if (i < 0) continue;
+    table.classList.add("drop-" + cls);
+    visible[i] = false;
+    want[i] = 0;
   }
-  ths.forEach((th, i) => { if (visible[i] && i !== flex) th.style.width = `${want[i]}px`; });
-  if (flex >= 0) ths[flex].style.width = "auto";
+  const flexW = Math.max(minFlex, avail - total());
+  ths.forEach((th, i) => { if (visible[i]) th.style.width = `${i === flex ? flexW : want[i]}px`; });
   table.classList.toggle("wrap", state.wrap);
 }
 function fitTables() { document.querySelectorAll("#view .grid:not(.skeleton)").forEach(autofit); }
