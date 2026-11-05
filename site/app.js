@@ -1230,11 +1230,22 @@ const LEVELS = ["basic", "working", "fluent", "native"];
 const LANG_OPTIONS = ["en", "de", "fr", "it", "es", "pt", "nl", "sv", "da", "pl", "zh"];
 const TYPE_OPTIONS = ["summer", "off_cycle", "insight", "working_student", "part_time", "graduate", "spring", "winter"];
 
+function redrawProfile() {
+  if (state.view !== "profile") return;
+  const view = $("#view");
+  const controls = () => [...view.querySelectorAll("input, select, textarea, button")];
+  const i = controls().indexOf(document.activeElement);
+  renderView();
+  if (i >= 0) controls()[i]?.focus({ preventScroll: true });
+}
+
 function renderProfile(view) {
   const p = profile.get();
   $("#view-meta").textContent = "Stored only in this browser. Use Export in the sidebar to back it up.";
   state.rowIds = [];
-  const set = (patch) => { profile.set({ ...profile.get(), ...patch }); };
+  // Save, then redraw so new or removed rows appear and every control reads the saved profile (not this render's
+  // copy). Deferred one tick so focus has moved (e.g. Tab after a text field), then restored to the same control.
+  const set = (patch) => { profile.set({ ...profile.get(), ...patch }); setTimeout(redrawProfile, 0); };
   const field = (label, input) => h("label", { class: "field" }, h("span", { class: "label" }, label), input);
   const text = (key, ph = "") => h("input", { type: "text", value: p[key] || "", placeholder: ph, onchange: (ev) => set({ [key]: ev.target.value.trim() }) });
   const select = (value, options, onchange, label) => h("select", { "aria-label": label, onchange: (ev) => onchange(ev.target.value || null) },
