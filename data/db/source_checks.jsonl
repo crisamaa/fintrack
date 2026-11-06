@@ -613,3 +613,36 @@
 {"at":"2026-11-06T16:31:49Z","duration_ms":8942,"error":null,"http_status":null,"id":613,"new_postings":0,"outcome":"ok","postings":1,"run_id":7,"source_id":"workday:athene/Apollo_Careers"}
 {"at":"2026-11-06T16:31:49Z","duration_ms":77,"error":null,"http_status":null,"id":614,"new_postings":0,"outcome":"ok","postings":1,"run_id":7,"source_id":"ashby:billie"}
 {"at":"2026-11-06T16:31:49Z","duration_ms":18293,"error":"format_changed: workday:ntrs/northerntrust: unexpected response shape (KeyError('title'))","http_status":null,"id":615,"new_postings":null,"outcome":"format_changed","postings":null,"run_id":7,"source_id":"workday:ntrs/northerntrust"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":106164,"error":"pagination: workday:santander/SantanderCareers: more than 50 pages","http_status":null,"id":616,"new_postings":null,"outcome":"pagination","postings":null,"run_id":8,"source_id":"workday:santander/SantanderCareers"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":21899,"error":"format_changed: workday:ntrs/northerntrust: unexpected response shape (KeyError('title'))","http_status":null,"id":617,"new_postings":null,"outcome":"format_changed","postings":null,"run_id":8,"source_id":"workday:ntrs/northerntrust"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1245,"error":null,"http_status":304,"id":618,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:ac932a1253"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1927,"error":null,"http_status":200,"id":619,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:34ff63914d"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2209,"error":null,"http_status":200,"id":620,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:c6cf570862"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":7520,"error":null,"http_status":null,"id":621,"new_postings":0,"outcome":"empty","postings":0,"run_id":8,"source_id":"workday:fil/001"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":9579,"error":null,"http_status":200,"id":622,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:a957341783"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1533,"error":null,"http_status":200,"id":623,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:0e53f54aa2"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2032,"error":null,"http_status":200,"id":624,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:c51353f8fd"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2454,"error":null,"http_status":200,"id":625,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:bdfb49fc0d"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2352,"error":null,"http_status":200,"id":626,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:7ae2a613ea"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":3042,"error":null,"http_status":200,"id":627,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:f382e2a1ee"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1315,"error":null,"http_status":200,"id":628,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:3ac804b364"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2390,"error":null,"http_status":200,"id":629,"new_postings":null,"outcome":"deferred","postings":null,"run_id":8,"source_id":"page:75720760c4"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":5119,"error":null,"http_status":null,"id":630,"new_postings":0,"outcome":"empty","postings":0,"run_id":8,"source_id":"workday:pjtpartners/Careers"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1778,"error":null,"http_status":200,"id":631,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:92124f58b0"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2966,"error":null,"http_status":200,"id":632,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:24d55f7e8c"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1303,"error":null,"http_status":200,"id":633,"new_postings":null,"outcome":"deferred","postings":null,"run_id":8,"source_id":"page:bcd85bc48f"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1753,"error":null,"http_status":200,"id":634,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:8ffec26d16"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2697,"error":null,"http_status":304,"id":635,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:275437aa18"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2410,"error":null,"http_status":200,"id":636,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:7611a397e5"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1640,"error":null,"http_status":200,"id":637,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:538d5e2a54"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2715,"error":null,"http_status":200,"id":638,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:4b5d2f1583"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1230,"error":null,"http_status":null,"id":639,"new_postings":0,"outcome":"empty","postings":0,"run_id":8,"source_id":"ashby:trustly"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1852,"error":null,"http_status":200,"id":640,"new_postings":null,"outcome":"deferred","postings":null,"run_id":8,"source_id":"page:eda971de18"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1726,"error":null,"http_status":200,"id":641,"new_postings":null,"outcome":"deferred","postings":null,"run_id":8,"source_id":"page:2552ae4a71"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2308,"error":null,"http_status":200,"id":642,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:d4ec675c35"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1932,"error":null,"http_status":200,"id":643,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:c652e85471"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2723,"error":null,"http_status":200,"id":644,"new_postings":null,"outcome":"deferred","postings":null,"run_id":8,"source_id":"page:bc7eea67bb"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1812,"error":null,"http_status":200,"id":645,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:733ccc3e5a"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":1335,"error":null,"http_status":null,"id":646,"new_postings":0,"outcome":"empty","postings":0,"run_id":8,"source_id":"greenhouse:adyen"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":2725,"error":null,"http_status":200,"id":647,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":8,"source_id":"page:a45788efe6"}
+{"at":"2026-11-06T21:54:22Z","duration_ms":133,"error":null,"http_status":null,"id":648,"new_postings":0,"outcome":"empty","postings":0,"run_id":8,"source_id":"ashby:pleo"}
