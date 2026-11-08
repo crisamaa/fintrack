@@ -1140,3 +1140,33 @@
 {"at":"2026-11-08T15:42:19Z","duration_ms":2920,"error":null,"http_status":200,"id":1140,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":14,"source_id":"page:2bbde4cece"}
 {"at":"2026-11-08T15:42:19Z","duration_ms":1831,"error":null,"http_status":200,"id":1141,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":14,"source_id":"page:0b740e6e14"}
 {"at":"2026-11-08T15:42:19Z","duration_ms":1708,"error":null,"http_status":200,"id":1142,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":14,"source_id":"page:ef087f50a0"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2772,"error":null,"http_status":200,"id":1143,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:75a26189e9"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":41142,"error":"unavailable: GET https://www.morganstanley.com/people-opportunities: timed out","http_status":null,"id":1144,"new_postings":null,"outcome":"unavailable","postings":null,"run_id":15,"source_id":"page:212b6169ef"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2256,"error":null,"http_status":200,"id":1145,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:e59f1d0c68"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1262,"error":"invalid: https://api.ashbyhq.com/posting-api/job-board/pennylane: response larger than 5000000 bytes","http_status":null,"id":1146,"new_postings":null,"outcome":"invalid","postings":null,"run_id":15,"source_id":"ashby:pennylane"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2776,"error":null,"http_status":200,"id":1147,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:72bdcf4eb5"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1274,"error":"invalid: https://boards-api.greenhouse.io/v1/boards/stripe/jobs: response larger than 5000000 bytes","http_status":null,"id":1148,"new_postings":null,"outcome":"invalid","postings":null,"run_id":15,"source_id":"greenhouse:stripe"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1838,"error":null,"http_status":200,"id":1149,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:b9fd36a98e"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2024,"error":null,"http_status":200,"id":1150,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:f544cfd3c3"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1736,"error":null,"http_status":304,"id":1151,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:4b85db2d44"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2119,"error":null,"http_status":200,"id":1152,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:f3c6b82d1e"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":93340,"error":"pagination: workday:citi/2: more than 50 pages","http_status":null,"id":1153,"new_postings":null,"outcome":"pagination","postings":null,"run_id":15,"source_id":"workday:citi/2"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2051,"error":null,"http_status":200,"id":1154,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:388e019da9"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2206,"error":null,"http_status":304,"id":1155,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:33cc03343a"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":118,"error":null,"http_status":null,"id":1156,"new_postings":0,"outcome":"empty","postings":0,"run_id":15,"source_id":"greenhouse:optiver"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2595,"error":null,"http_status":200,"id":1157,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:c0a693bb4a"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2365,"error":null,"http_status":200,"id":1158,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:20874ec338"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1477,"error":null,"http_status":304,"id":1159,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:ec811dc7f6"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1611,"error":null,"http_status":200,"id":1160,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:326787bdce"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1178,"error":null,"http_status":200,"id":1161,"new_postings":null,"outcome":"deferred","postings":null,"run_id":15,"source_id":"page:f3d72e20bb"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":20676,"error":null,"http_status":200,"id":1162,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:b7f261e467"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2201,"error":null,"http_status":200,"id":1163,"new_postings":null,"outcome":"deferred","postings":null,"run_id":15,"source_id":"page:c6a3060927"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2246,"error":null,"http_status":200,"id":1164,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:f6c00aa466"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":4947,"error":null,"http_status":200,"id":1165,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:d791aaad55"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1337,"error":null,"http_status":200,"id":1166,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:3a4e57e8d1"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1520,"error":"gone: GET https://careers.vanlanschotkempen.com/en-nl: HTTP 404","http_status":404,"id":1167,"new_postings":null,"outcome":"gone","postings":null,"run_id":15,"source_id":"page:e52f8262e0"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1623,"error":null,"http_status":null,"id":1168,"new_postings":0,"outcome":"empty","postings":0,"run_id":15,"source_id":"lever:swile"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":69,"error":null,"http_status":null,"id":1169,"new_postings":0,"outcome":"empty","postings":0,"run_id":15,"source_id":"ashby:mollie"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":2116,"error":null,"http_status":200,"id":1170,"new_postings":null,"outcome":"deferred","postings":null,"run_id":15,"source_id":"page:d97a7dbd3c"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1880,"error":null,"http_status":200,"id":1171,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:733ccc3e5a"}
+{"at":"2026-11-08T20:55:54Z","duration_ms":1491,"error":null,"http_status":200,"id":1172,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":15,"source_id":"page:f502cb9c32"}
