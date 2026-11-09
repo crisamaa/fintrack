@@ -87,7 +87,8 @@ export function buildFeed({ opps, target, ctxFor = () => ({}), decisions = {}, l
     const d = decisions[opp.id] || null;
     const legacy = !d && legacyDismissed.has(opp.id);
     const entry = trackerEntry(opp.id);
-    const state = d?.state || (legacy ? "dismissed" : null);
+    // "restored" undoes an old global dismissal for this target only; otherwise it means no decision.
+    const state = d?.state === "restored" ? null : d?.state || (legacy ? "dismissed" : null);
     const days = opp.closes_on ? daysUntil(opp.closes_on, today) : null;
     const item = { opp, match, decision: d, state, legacy, entry, applied: processedStage(entry) ? entry.stage : null,
       days, resurfaced: null, newSinceVisit: false };

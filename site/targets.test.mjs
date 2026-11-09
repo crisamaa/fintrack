@@ -155,3 +155,10 @@ test("unreadable storage falls back to an empty, working store", () => {
   const id = t.create({ name: "IB", prefs: ibPrefs });
   assert.ok(t.get(id));
 });
+
+test("restored is a decision state, for undoing an old global dismissal in one target", () => {
+  const { t } = make();
+  const a = t.create({ name: "IB", prefs: ibPrefs });
+  t.decide(a, "o", "restored");
+  assert.equal(t.decision(a, "o").state, "restored");
+});

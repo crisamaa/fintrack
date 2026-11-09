@@ -160,3 +160,11 @@ test("materialChanges names reopenings, intake and eligibility improvements, and
   const low = { ...a, category: "low" };
   assert.deepEqual(materialChanges(low, { ...low, category: "top", prefsVersion: 2 }, IB.prefs).map((c) => c.code), ["preferences"]);
 });
+
+test("restoring an old global dismissal in one target keeps it dismissed in the others", () => {
+  const legacyDismissed = new Set(["mna"]);
+  const restored = feed(BASE, IB, { legacyDismissed, decisions: { mna: { state: "restored", at: "x" } } });
+  assert.ok(ids(restored.sections.top).includes("mna"));
+  assert.equal(restored.sections.top.find((x) => x.opp.id === "mna").state, null);
+  assert.ok(!ids(feed(BASE, IB, { legacyDismissed }).sections.top).includes("mna"));
+});

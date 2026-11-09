@@ -17,7 +17,7 @@
 import { FUNCTIONS, LEVELS, emptyPrefs } from "./match.js";
 
 export const TARGETS_KEY = "fintrack.targets.v1";
-export const DECISIONS = ["saved", "dismissed", "later"];
+export const DECISIONS = ["saved", "dismissed", "later", "restored"];
 export const TYPES = ["summer", "off_cycle", "spring", "winter", "insight", "working_student", "part_time", "graduate"];
 export const DISMISS_REASONS = {
   wrong_field: "Wrong finance field", uninteresting_role: "Uninteresting role", location: "Unsuitable location",
