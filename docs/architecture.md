@@ -45,6 +45,7 @@ database later is a contained change (see *Known limitations*).
 | Lifecycle state machine | `lifecycle.py` |
 | Field provenance and precedence | `facts.py` |
 | Requirement extraction (rules) | `requirements.py`, `taxonomy.py` |
+| Role-function classification (rules, then AI only with a quote) | `roles.py` |
 | Recurring programs and windows | `programs.py` |
 | Scheduling per source | `schedule.py` |
 | Durable job queue | `jobs.py`, handlers in `work.py` |
@@ -56,6 +57,7 @@ database later is a contained change (see *Known limitations*).
 | Site data export | `export.py` |
 | Orchestration, CLI | `run.py`, `__main__.py` |
 | Site: views, eligibility, ranking, outreach drafts, local store | `site/app.js`, `eligibility.js`, `relevance.js`, `outreach.js`, `store.js`, `filters.js` |
+| Site: career targets, matching, For you feed, learning (see `docs/personalization.md`) | `site/targets.js`, `match.js`, `feed.js`, `learn.js` |
 
 ## Database
 
@@ -66,7 +68,8 @@ database later is a contained change (see *Known limitations*).
 - **Sources**: `sources` (kind, board, canonical and discovered URL, category, access, discovery method and
   evidence, health, schedule, ETag/hash, counters and yield), `source_checks` (one row per check, 45 days),
   `source_postings` (each posting as a source reports it — the raw observation), `runs`.
-- **Recruitment**: `opportunities` (advertised vacancies only), `opportunity_facts` (provenance per field),
+- **Recruitment**: `opportunities` (advertised vacancies only), `opportunity_roles` (role function, confidence,
+  method, evidence; recomputed per content hash and classifier version), `opportunity_facts` (provenance per field),
   `opportunity_requirements` (stated eligibility conditions with evidence), `opportunity_events` (lifecycle and
   changes), `programs`, `program_windows`, `coverage_gaps`.
 - **Opportunity creation**: `prospects`, `employer_intel` (every note cites a fetched page).
@@ -120,7 +123,8 @@ workflow has a concurrency group, so runs never overlap.
 ## Gemini
 
 Gemini is used only where language understanding adds value: reading careers pages without structured data,
-enriching postings (countries, type, deadline with its quote, requirements with quotes), classifying unfamiliar
+enriching postings (countries, type, deadline with its quote, requirements with quotes, and the role function
+with a quote when the title rules found nothing confident), classifying unfamiliar
 employers from their own homepage, reading program pages for stated dates, researching prospects, and (optional)
 grounded web search. It is never used for ATS APIs, IDs, unchanged content, scheduling or filtering.
 

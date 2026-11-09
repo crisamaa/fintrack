@@ -13,7 +13,7 @@ and outreach to firms that advertise nothing.
 
 | View | What it is for |
 | --- | --- |
-| Discover | every internship found, with eligibility, fit ranking, sources and evidence |
+| Discover | For you: a ranked, sectioned feed per career target, reviewed beside the details; All opportunities: every internship found, with eligibility, fit ranking, sources and evidence |
 | Programs | recurring programs: confirmed, observed and estimated recruitment windows |
 | Firms | every tracked employer: sectors, offices, sources and their health, openings, programs, prospect research |
 | Outreach | firms worth approaching directly; contacts, interactions, follow-ups, message drafts (never sent for you) |
@@ -49,6 +49,8 @@ pytest && python -m pyflakes tracker tests && node --test site/*.test.mjs
 - [Architecture](docs/architecture.md): modules, database, lifecycle, dedup, provenance, scheduling, Gemini, security
 - [Source connectors](docs/connectors.md): supported platforms, adding one, access restrictions
 - [Eligibility and ranking](docs/eligibility.md)
+- [Personalised Discover](docs/personalization.md): career targets, role classification, matching, feed sections,
+  learning from decisions
 - [Coverage measurement](docs/coverage.md)
 - [Configuration and costs](docs/configuration.md)
 - [Operations](docs/operations.md): running, monitoring, AI spend, backup, restore, rollback
