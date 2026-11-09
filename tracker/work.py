@@ -12,7 +12,7 @@ import time
 from datetime import date, timedelta
 from urllib.parse import urljoin, urlsplit
 
-from tracker import connectors, entities, facts, ingest, jobs, lifecycle, programs, prompts, requirements
+from tracker import connectors, entities, facts, ingest, jobs, lifecycle, programs, prompts, requirements, roles
 from tracker.ai import AIAccountError, quote_in
 from tracker.connectors import RawPosting, SourceRef
 from tracker.connectors.page import fallback_external_id, jsonld_postings
@@ -248,6 +248,8 @@ def apply_enrichment(ctx: Ctx, opp_id: str, e: prompts.Enrichment, text: str, so
         if value is not None:
             reqs.append((r.kind, value, r.quote[:300]))
     requirements.store(conn, now, opp_id, reqs, "ai")
+    if e.role_function and quote_in(e.role_quote, text):
+        roles.apply_ai(conn, now, opp_id, e.role_function, e.role_quote[:200], model)
     conn.execute("UPDATE opportunities SET enrichment = 'done', excluded_reason = CASE WHEN ? THEN NULL ELSE "
                  "'not_internship' END WHERE id = ?", (1 if e.is_internship else 0, opp_id))
     if e.is_internship:

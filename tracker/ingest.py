@@ -24,6 +24,7 @@ from tracker.context import Ctx
 from tracker.db import dumps, iso, loads, one, tx
 from tracker.http import SourceFailure
 from tracker.identity import canonical_url, find_match, opportunity_id, title_key
+from tracker import roles
 from tracker.taxonomy import classify_sectors, classify_type, intake_year, parse_location
 
 log = logging.getLogger(__name__)
@@ -269,6 +270,7 @@ def _record_facts(ctx: Ctx, source: dict, opp_id: str, p: RawPosting, city, coun
     langs = [code for code, _ in requirements.required_languages(p.description)]
     if langs:
         facts.set_fact(conn, now, opp_id, "languages", langs, "rule", source_id=sid)
+    roles.store(conn, now, opp_id, department=dept or None)  # no department stated: keep the stored one
 
 
 def refresh_exclusion(ctx: Ctx, opp_id: str) -> None:

@@ -11,6 +11,7 @@ Steps, in order (each can be selected with --steps):
   prospects score prospects and queue research
   audit     coverage benchmark (weekly, or when the benchmark file changed)
   notify    program-opening notifications; the digest at the configured hour
+  classify  role function of opportunities not yet classified at the current classifier version (rules only)
   export    site data files
 A step that raises is logged and recorded in the run's stats; the following steps still run.
 """
@@ -24,8 +25,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from tracker import (coverage, db, discovery, export, ingest, jobs, legacy, notify, programs, prospects, search,
-                     seeds, work)
+from tracker import (coverage, db, discovery, export, ingest, jobs, legacy, notify, programs, prospects, roles,
+                     search, seeds, work)
 from tracker.ai import AIService, GeminiProvider, Provider
 from tracker.budget import Budget
 from tracker.config import Config
@@ -35,7 +36,7 @@ from tracker.http import SafeClient
 
 log = logging.getLogger(__name__)
 STEPS = ("sync", "collect", "maintain", "work", "discover", "search", "programs", "prospects", "audit", "notify",
-         "export")
+         "classify", "export")
 LOCK_MINUTES = 70
 AUDIT_EVERY = timedelta(days=7)
 
@@ -126,6 +127,8 @@ def run(cfg: Config, *, now: datetime | None = None, steps: tuple[str, ...] = ST
                     set_meta(conn, "audit:last", iso(now))
                     set_meta(conn, "audit:benchmark", digest_of)
                     ctx.stats["audit_misses"] = len(result["misses"])
+            elif step == "classify":
+                ctx.stats["roles_classified"] = roles.refresh(conn, now)
             elif step == "notify":
                 notify.program_openings(ctx)
                 last = parse_iso(get_meta(conn, "digest:last"))
