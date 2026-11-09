@@ -93,14 +93,17 @@ _RULES: list[tuple[str, str, int, str]] = [
     (r"human\s+resources|\bhr\b|\bpeople\b|talent|recruit|recursos\s+humanos|personas|\blearning\b", "hr", 90, "high"),
     (r"marketing|communication|copywrit|social\s+media|graphic\s+design|brand|affaires\s+publiques|public\s+affairs",
      "marketing", 89, "high"),
-    (r"legal|lawyer|rechtsdienst|rechtdienst|compliance|\bafc\b|\baml\b|\bkyc\b|regulatory|governance|general\s+secretary|privacy|juridique",
+    (r"legal|lawyer|rechtsdienst|rechtdienst|compliance|\bafc\b|\baml\b|\bkyc\b|regulatory|governance|"
+     r"general\s+secretary|privacy|juridique",
      "compliance_legal", 90, "high"),
     (r"\baudit", "compliance_legal", 89, "high"),
     (r"operations|\bops\b|customer\s+service|client\s+service|business\s+support|back\s+office|workplace|"
-     r"fund\s+admin|administrati|dienstleistung|support\s+specialist|reconciliation|client\s+experience", "operations", 90, "high"),
+     r"fund\s+admin|administrati|dienstleistung|support\s+specialist|reconciliation|client\s+experience",
+     "operations", 90, "high"),
     (r"investor\s+relations|investor\s+solutions|fundrais|syndication", "investor_relations", 90, "high"),
     (r"product\s+(manag|innovation|owner)|\bux\b|user\s+experience|product\s+operations", "product", 91, "high"),
-    (r"\bsales\b(?!\s*(&|and|,)\s*trading)|business\s+develop|\bsdr\b|relationship\s+manag|b2c|\bdistribution\b|vertrieb(?<!filialvertrieb)",
+    (r"\bsales\b(?!\s*(&|and|,)\s*trading)|business\s+develop|\bsdr\b|relationship\s+manag|b2c|"
+     r"\bdistribution\b|vertrieb(?<!filialvertrieb)",
      "sales", 87, "high"),
     (r"\besg\b|sustainab|nature-based", "sustainability", 86, "high"),
     (r"founder\s+associate|business\s+management|project\s+manag|program\s+manag|strateg", "strategy", 60, "high"),
@@ -125,7 +128,8 @@ _RULES: list[tuple[str, str, int, str]] = [
     (r"quantitativ|\bquant\b", "quant", 80, "high"),
     (r"portfolio\s+manag|asset\s+manag|fund\s+manag|gestion\s+d.actifs|sustainable\s+investing|"
      r"quantitative\s+investing", "asset_management", 76, "high"),
-    (r"wealth\s+manag|vermoegensverwaltung|gestion\s+de\s+fortune|assistant(\(e\)|e)?\s+de\s+gestion|banquier\s+patrimonial|private\s+clients|privatkunden", "wealth_management",
+    (r"wealth\s+manag|vermoegensverwaltung|gestion\s+de\s+fortune|assistant(\(e\)|e)?\s+de\s+gestion|"
+     r"banquier\s+patrimonial|private\s+clients|privatkunden", "wealth_management",
      78, "high"),
     (r"private\s+bank|banque\s+privee|banquier\s+prive|banca\s+privada", "private_banking", 79, "high"),
     (r"corporate\s+banking|commercial\s+banking|retail\s+banking|customer\s+banking|transaction\s+banking|"
@@ -134,7 +138,8 @@ _RULES: list[tuple[str, str, int, str]] = [
     (r"\brisk|risque|risiko|riesgo", "risk", 81, "high"),
     (r"family\s+office", "family_office", 80, "high"),
     (r"investment\s+consult|pension\s+consult", "investment_consulting", 80, "high"),
-    (r"corporate\s+finance|valuation|capital\s+solutions|secondary\s+advisory|financial\s+(and\s+strategic\s+)?advisory|finanzas\s+corporativas",
+    (r"corporate\s+finance|valuation|capital\s+solutions|secondary\s+advisory|"
+     r"financial\s+(and\s+strategic\s+)?advisory|finanzas\s+corporativas",
      "corporate_finance", 74, "high"),
     (r"investment\s+bank|\bibd\b|banque\s+d.investissement|banca\s+de\s+inversion|"
      r"^banking\s+(analyst|associate|off|summer|intern)", "investment_banking", 70, "medium"),
@@ -157,7 +162,9 @@ def _matches(text: str, *, original: str = "") -> list[tuple[int, int, str, str,
     for rx, fn, prio, conf in _RES:
         m = rx.search(folded)
         if m:
-            hits.append((prio, m.start(), fn, conf, text[m.start():m.end()] if len(text) == len(folded) else m.group(0)))
+            # Folding can change the length (ü -> ue); then the folded words are the evidence.
+            ev = text[m.start():m.end()] if len(text) == len(folded) else m.group(0)
+            hits.append((prio, m.start(), fn, conf, ev))
     m = _IT.search(_COVERAGE.sub(" ", original or text))
     if m:
         hits.append((90, m.start(), "technology", "high", "IT"))
@@ -241,7 +248,8 @@ def store(conn: sqlite3.Connection, now: datetime, opp_id: str, *, department: s
     return True
 
 
-def apply_ai(conn: sqlite3.Connection, now: datetime, opp_id: str, function: str, quote: str, model: str | None) -> bool:
+def apply_ai(conn: sqlite3.Connection, now: datetime, opp_id: str, function: str, quote: str,
+             model: str | None) -> bool:
     """Gemini's reading, used only when the rules ended at low confidence or nothing, or at a generic function."""
     if function not in FUNCTIONS:
         return False

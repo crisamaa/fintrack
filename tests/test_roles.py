@@ -120,3 +120,100 @@ def test_taxonomy_export_shape():
     assert t["version"] == roles.VERSION
     assert {f["id"] for f in t["functions"]} == set(roles.FUNCTIONS)
     assert set(t["families"]) == set(roles.FAMILIES)
+
+
+# --- persistence, AI layer and export ----------------------------------------------------------------------------
+import json  # noqa: E402
+import re  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from tests.conftest import FakeProvider, make_ctx  # noqa: E402
+from tests.helpers import employer, later, opp_for, posting, result, row, source  # noqa: E402
+from tracker import export, ingest, work  # noqa: E402
+from tracker.db import one  # noqa: E402
+
+
+def _role(ctx, opp_id):
+    return dict(one(ctx.conn, "SELECT * FROM opportunity_roles WHERE opportunity_id = ?", (opp_id,)))
+
+
+def _ingest(ctx, *postings):
+    ingest.ingest(ctx, row(ctx, "greenhouse:acme"), result(*postings))
+
+
+def test_ingest_classifies_with_department_and_is_idempotent(ctx):
+    employer(ctx)
+    source(ctx)
+    _ingest(ctx, posting(1, title="Summer Internship 2027", structured={"department": "Leveraged Finance"}))
+    o = opp_for(ctx, 1)
+    r = _role(ctx, o["id"])
+    assert (r["function"], r["method"], r["version"]) == ("dcm", "department", roles.VERSION)
+    assert roles.refresh(ctx.conn, ctx.now) == 0  # unchanged text and version: nothing recomputed
+
+
+def test_changed_title_reclassifies_and_records_history(ctx):
+    employer(ctx)
+    source(ctx)
+    _ingest(ctx, posting(1, title="2027 Summer Analyst - Technology Developer"))
+    o = opp_for(ctx, 1)
+    assert _role(ctx, o["id"])["function"] == "technology"
+    later(ctx, hours=8)
+    _ingest(ctx, posting(1, title="2027 Summer Analyst - M&A Advisory"))
+    assert _role(ctx, o["id"])["function"] == "m_and_a"
+    ev = one(ctx.conn, "SELECT * FROM opportunity_events WHERE opportunity_id = ? AND field = 'role'", (o["id"],))
+    assert (ev["old_value"], ev["new_value"]) == ("technology", "m_and_a")
+
+
+def test_version_bump_backfills_every_opportunity(ctx, monkeypatch):
+    employer(ctx)
+    source(ctx)
+    _ingest(ctx, posting(1), posting(2, title="Legal Intern"))
+    ctx.conn.execute("DELETE FROM opportunity_roles")
+    assert roles.refresh(ctx.conn, ctx.now) == 2
+    monkeypatch.setattr(roles, "VERSION", "roles-test")
+    assert roles.refresh(ctx.conn, ctx.now) == 2
+    assert {r[0] for r in ctx.conn.execute("SELECT version FROM opportunity_roles")} == {"roles-test"}
+
+
+def _enrich(role_function, role_quote, title="Intern"):
+    reply = json.dumps({"is_internship": True, "countries": ["CH"], "city": "Zurich", "internship_type": "summer",
+                        "intake_year": 2027, "closes_on": None, "closes_quote": None, "languages": [],
+                        "requirements": [], "role_function": role_function, "role_quote": role_quote})
+    ctx = make_ctx(provider=FakeProvider(default=reply))
+    employer(ctx)
+    source(ctx)
+    _ingest(ctx, posting(1, title=title, location="", description="You will support the deal team on buyouts."))
+    work.drain(ctx, ["enrich"])
+    return ctx, _role(ctx, opp_for(ctx, 1)["id"])
+
+
+def test_ai_fills_an_unknown_role_only_with_a_verbatim_quote():
+    _, r = _enrich("private_equity", "support the deal team on buyouts")
+    assert (r["function"], r["method"], r["confidence"]) == ("private_equity", "ai", "medium")
+    _, r = _enrich("private_equity", "a quote that is not in the text")
+    assert r["function"] == "unknown"
+    _, r = _enrich("astrology", "support the deal team on buyouts")
+    assert r["function"] == "unknown"
+
+
+def test_ai_never_overrides_a_confident_rule():
+    _, r = _enrich("private_equity", "support the deal team on buyouts", title="Software Engineer Intern")
+    assert (r["function"], r["method"]) == ("technology", "title")
+
+
+def test_export_carries_role_taxonomy_and_program_roles(ctx):
+    employer(ctx)
+    source(ctx)
+    _ingest(ctx, posting(1, title="Buyout Intern 2027"))
+    data = export.opportunities(ctx)
+    assert data["role_taxonomy"]["version"] == roles.VERSION
+    o = data["opportunities"][0]
+    assert o["role"]["function"] == "private_equity" and o["role"]["confidence"] == "high"
+
+
+def test_site_taxonomy_copy_matches_the_tracker():
+    """site/match.js keeps a fallback copy of the function taxonomy; it must not drift."""
+    js = (Path(__file__).parent.parent / "site" / "match.js").read_text()
+    block = js[js.index("export const FUNCTIONS"):js.index("};", js.index("export const FUNCTIONS"))]
+    found = dict(re.findall(r"(\w+): \{ label: \"[^\"]+\", family: \"(\w+)\"", block))
+    assert found == {k: v["family"] for k, v in roles.FUNCTIONS.items()}

@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
 
-from tracker import coverage, jobs
+from tracker import coverage, jobs, roles
 from tracker.budget import Budget
 from tracker.context import Ctx
 from tracker.db import iso, loads, one
@@ -44,6 +44,7 @@ def opportunities(ctx: Ctx) -> dict:
                            "JOIN sources s ON s.id = sp.source_id WHERE sp.opportunity_id IS NOT NULL").fetchall(),
                  "opportunity_id")
     evs = _group(c.execute("SELECT * FROM opportunity_events ORDER BY at DESC, id DESC").fetchall(), "opportunity_id")
+    role_rows = {r["opportunity_id"]: r for r in c.execute("SELECT * FROM opportunity_roles")}
     out = []
     for o in c.execute("SELECT o.*, e.name employer FROM opportunities o JOIN employers e ON e.id = o.employer_id "
                        "ORDER BY o.employer_id, o.title, o.id"):
@@ -58,6 +59,7 @@ def opportunities(ctx: Ctx) -> dict:
             "reopened": o["reopened_count"], "discovered_via": o["discovered_via"], "program_id": o["program_id"],
             "review_flag": o["review_flag"], "excluded_reason": o["excluded_reason"], "enrichment": o["enrichment"],
             "description": o["description"][:600],
+            "role": roles.for_export(role_rows[oid]) if oid in role_rows else None,
             "requirements": [{"kind": r["kind"], "value": loads(r["value"]), "evidence": r["evidence"],
                               "method": r["method"]} for r in reqs.get(oid, [])],
             "sources": [{"source_id": s["source_id"], "url": s["url"], "present": bool(s["present"]),
@@ -71,7 +73,7 @@ def opportunities(ctx: Ctx) -> dict:
                         "field": e["field"], "old": e["old_value"], "new": e["new_value"], "note": e["note"]}
                        for e in evs.get(oid, [])[:12]],
         })
-    return {"generated_at": iso(ctx.now), "opportunities": out}
+    return {"generated_at": iso(ctx.now), "role_taxonomy": roles.taxonomy(), "opportunities": out}
 
 
 def market(ctx: Ctx) -> dict:
@@ -103,6 +105,7 @@ def market(ctx: Ctx) -> dict:
         "division": p["division"], "countries": loads(p["countries"], []), "official_url": p["official_url"],
         "eligibility": p["eligibility_text"], "status": p["status"], "discovered_via": p["discovered_via"],
         "opportunity_ids": [o["id"] for o in popps.get(p["id"], [])],
+        "role": roles.classify(p["name"], description=p["eligibility_text"] or ""),
         "windows": [{k: w[k] for k in ("intake_year", "kind", "opens_on", "closes_on", "opens_earliest",
                                        "opens_latest", "source_url", "evidence", "recorded_at")}
                     for w in wins.get(p["id"], [])],
