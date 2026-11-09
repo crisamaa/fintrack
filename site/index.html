@@ -97,17 +97,20 @@
     <dt><kbd>/</kbd></dt><dd>Search</dd>
     <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>Next / previous role</dd>
     <dt><kbd>Enter</kbd></dt><dd>Open details</dd>
-    <dt><kbd>s</kbd></dt><dd>Shortlist or remove</dd>
+    <dt><kbd>s</kbd></dt><dd>Save (For you) · shortlist or remove (tables)</dd>
+    <dt><kbd>x</kbd></dt><dd>Dismiss from this target (For you) · not interested (tables)</dd>
     <dt><kbd>a</kbd></dt><dd>Mark as applied</dd>
+    <dt><kbd>l</kbd></dt><dd>Review later (For you)</dd>
+    <dt><kbd>u</kbd></dt><dd>Undo the last dismissal or change</dd>
     <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Move stage back / forward</dd>
     <dt><kbd>o</kbd></dt><dd>Open the original ad</dd>
-    <dt><kbd>x</kbd></dt><dd>Not interested / undo</dd>
     <dt><kbd>Esc</kbd></dt><dd>Close details or clear search</dd>
   </dl>
   <form method="dialog"><button class="btn">Close</button></form>
 </dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="undo-bar" id="undo" role="status" aria-live="polite" hidden></div>
 <script type="module" src="app.js"></script>
 </body>
 </html>

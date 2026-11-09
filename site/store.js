@@ -8,6 +8,7 @@
 //   fintrack.crm.v1       outreach relationships keyed by employer id
 //   fintrack.dismissed.v1 opportunity ids marked "not interested"
 //   fintrack.prefs.v1     view preferences
+//   fintrack.targets.v1   career targets, their decisions and suggestions (site/targets.js)
 
 const KEY = "fintrack.tracker.v1";
 const PREFS = "fintrack.prefs.v1";
@@ -171,12 +172,13 @@ export function createDismissed() {
 }
 
 // One file with everything personal. Version 1 files (applications only) still import.
-export function exportAll({ tracker, profile, crm, dismissed }) {
-  return JSON.stringify({ version: 2, exported: new Date().toISOString(), entries: tracker.exportData(),
-    profile: profile.get(), crm: crm.all(), dismissed: dismissed.all() }, null, 2);
+// Version 3 adds career targets (decisions, suggestions, corrections); older files still import.
+export function exportAll({ tracker, profile, crm, dismissed, targets = null }) {
+  return JSON.stringify({ version: 3, exported: new Date().toISOString(), entries: tracker.exportData(),
+    profile: profile.get(), crm: crm.all(), dismissed: dismissed.all(), targets: targets?.exportData() ?? null }, null, 2);
 }
 
-export function importAll(text, { tracker, profile, crm, dismissed }) {
+export function importAll(text, { tracker, profile, crm, dismissed, targets = null }) {
   const data = JSON.parse(text);
   if (!data || typeof data.entries !== "object") throw new Error("Not a Fintrack export");
   tracker.importEntries(data.entries);
@@ -185,6 +187,7 @@ export function importAll(text, { tracker, profile, crm, dismissed }) {
     crm.replaceAll(data.crm);
     dismissed.replaceAll(data.dismissed);
   }
+  if (data.version >= 3 && data.targets && targets) targets.importData(data.targets);
   return Object.keys(data.entries).length;
 }
 

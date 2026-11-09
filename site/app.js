@@ -8,6 +8,10 @@ import {
 import { assess, OUTCOMES, suggestions, REGIONS } from "./eligibility.js";
 import { rank } from "./relevance.js";
 import { compose, mailto, DRAFT_KINDS } from "./outreach.js";
+import { createTargets, validatePrefs, prefsFromLegacy, TYPES, DISMISS_REASONS } from "./targets.js";
+import { buildFeed, fingerprint, SECTIONS } from "./feed.js";
+import { detect, applySuggestion, behaviour, resolve as resolveSuggestion } from "./learn.js";
+import { FUNCTIONS, FAMILIES, CATEGORIES, LEVELS as ROLE_LEVELS, effectiveRole, functionLabel, emptyPrefs } from "./match.js";
 
 // --- reference data -----------------------------------------------------------------------------------------------
 // Labels match tracker/taxonomy.py.
@@ -56,6 +60,7 @@ const tracker = createTracker();
 const profile = createProfile();
 const crm = createCrm();
 const dismissed = createDismissed();
+const targets = createTargets();
 const saved = prefs.load();
 const state = {
   data: null,
@@ -70,6 +75,13 @@ const state = {
   detailKind: "role",   // role | program | firm | source
   today: localToday(),
   view: "discover",
+  discoverMode: saved.discoverMode === "all" ? "all" : "foryou",  // For you (personalised) | All opportunities
+  section: saved.section || "top",              // For you section
+  editing: null,                                // "new" | target id while the target editor is open
+  draft: null,                                  // the target being edited or set up
+  feedLimit: 60,                                // rows shown before "Show more"
+  visit: {},                                    // target id -> { previous, current }, taken once per page load
+  pendingSelect: null,                          // row to select after the list re-renders (e.g. after a dismissal)
   query: "",
   openOnly: saved.openOnly ?? true,
   confirmedOnly: saved.confirmedOnly ?? false,
@@ -112,6 +124,7 @@ function savePrefs() {
     sourceHealth: [...state.sourceHealth], deadline: state.deadline, newOnly: state.newOnly,
     untrackedOnly: state.untrackedOnly, languageMode: state.languageMode, hiddenCols: [...state.hiddenCols],
     wrap: state.wrap, colWidths: state.colWidths, detailWidth: state.detailWidth,
+    discoverMode: state.discoverMode, section: state.section,
     filters: Object.fromEntries(Object.entries(state.filters).map(([k, v]) => [k, [...v]])),
     firmFilters: Object.fromEntries(Object.entries(state.firmFilters).map(([k, v]) => [k, [...v]])),
   });
@@ -390,7 +403,12 @@ function viewMenu() {
 function renderToolbar(keepOpen) {
   const box = $("#filters");
   box.replaceChildren();
-  if (state.view === "discover") {
+  if (state.view === "discover") box.append(modeSwitch());
+  if (state.view === "discover" && state.discoverMode === "foryou") {
+    if (targets.active() && !state.editing) {
+      box.append(targetMenu(), h("button", { class: "btn ghost", type: "button", onclick: () => editTarget(targets.active().id) }, "Edit target"));
+    }
+  } else if (state.view === "discover") {
     const firmNames = new Map(state.roles.map((r) => [r.firm_id, r.firm_name]));
     box.append(...[
       filterMenu("countries", "Country", (r) => r.countries || [], countryName),
@@ -437,6 +455,13 @@ function renderToolbar(keepOpen) {
     const m = box.querySelector(`.menu[data-key="${CSS.escape(keepOpen)}"]`);
     if (m) m.open = true;
   }
+}
+
+// For you (the active career target's feed) or the full table of every posting.
+function modeSwitch() {
+  const b = (mode, label) => h("button", { type: "button", "aria-pressed": String(state.discoverMode === mode),
+    onclick: () => { if (state.discoverMode !== mode || state.editing) setDiscoverMode(mode); } }, label);
+  return h("div", { class: "mode-switch", role: "group", "aria-label": "Discover view" }, b("foryou", "For you"), b("all", "All opportunities"));
 }
 
 // --- tables ---------------------------------------------------------------------------------------------------------
@@ -625,6 +650,12 @@ function discoverRows() {
 }
 
 function renderDiscover(view) {
+  if (state.discoverMode === "foryou") return renderForYou(view);
+  return renderAllOpportunities(view);
+}
+
+// All opportunities: the complete database as a table, with every filter.
+function renderAllOpportunities(view) {
   const rows = discoverRows();
   const open = rows.filter((r) => r.status === "open").length;
   const firms = new Set(rows.map((r) => r.firm_id)).size;
@@ -672,6 +703,580 @@ function resetDiscover() {
   $("#search").value = "";
   Object.values(state.filters).forEach((s) => s.clear());
   savePrefs(); renderToolbar(); renderView();
+}
+
+// For you: the active career target's feed, reviewed in a list beside the detail pane ------------------------------
+// Everything personal here (targets, decisions, suggestions, corrections) is kept by targets.js in this browser.
+const typeName = (t) => SEASONS[t] || t;
+const MARK = { "+": "+", "-": "−", "?": "?", "·": "·" };
+const PRIMARY_SECTIONS = ["top", "new", "closing", "review"];
+const MORE_SECTIONS = ["adjacent", "saved", "dismissed"];
+const EMPTY_SECTION = {
+  top: ["No top matches yet", "Nothing in today's data fits this target strongly. Adjacent and Needs review may hold related roles; you can also broaden the target."],
+  new: ["Nothing new", "Postings the tracker first found since your previous visit to this target, or in the last 7 days, appear here."],
+  closing: ["No stated deadline in the next three weeks", "A missing closing date is not a deadline: many firms recruit on a rolling basis. Apply early to Top matches."],
+  review: ["Nothing needs review", "Promising postings whose role, place or requirements are unclear, and dismissed postings that changed, appear here."],
+  adjacent: ["No adjacent roles", "Related functions and weaker fits for this target appear here, outside the main sections."],
+  saved: ["Nothing saved yet", "Save with the button or the s key. Saved roles also appear in Pipeline as Shortlisted."],
+  dismissed: ["Nothing dismissed", "Dismissed postings leave this target's feed. They stay in All opportunities and in your other targets."],
+};
+const forYouActive = () => state.view === "discover" && state.discoverMode === "foryou" && !!targets.active() && !state.editing;
+let feedCache = null;
+const feedItem = (id) => feedCache?.items.get(id) || null;
+const fnOf = (id) => effectiveRole(state.byId.get(id) || {}, targets.override(id)).function;
+
+function computeFeed() {
+  const t = targets.active();
+  if (!t || !state.data) return (feedCache = null);
+  if (!state.visit[t.id]) state.visit[t.id] = targets.visit(t.id);
+  const beh = behaviour(targets.events(t.id), targets.decisions(t.id), fnOf);
+  const programs = [...state.programs.values()].map((p) => ({ ...p, employer_name: state.employers.get(p.employer_id)?.name }));
+  const t0 = performance.now();
+  feedCache = buildFeed({ opps: state.roles, target: t, today: state.today, visit: state.visit[t.id],
+    decisions: targets.decisions(t.id), legacyDismissed: new Set(Object.keys(dismissed.all())),
+    trackerEntry: (id) => tracker.get(id), programs,
+    ctxFor: (o) => ({ employers: state.employers, eligibility: o.eligibility || "insufficient", override: targets.override(o.id),
+      behaviour: beh, countryName, typeName, languageName }) });
+  feedCache.ms = Math.round((performance.now() - t0) * 10) / 10;
+  return feedCache;
+}
+
+function refreshSuggestions(t = targets.active()) {
+  if (!t) return;
+  const cur = targets.suggestions(t.id);
+  const next = detect({ target: t, events: targets.events(t.id), decisions: targets.decisions(t.id), opps: state.byId, fnOf,
+    existing: cur, now: Date.now() });
+  if (JSON.stringify(next) !== JSON.stringify(cur)) targets.setSuggestions(t.id, next);
+}
+
+function catTag(m) {
+  return h("span", { class: `cat cat-${m.category}`, title: "From this target's preferences; an order, not a probability" }, CATEGORIES[m.category]);
+}
+function stateTag(x) {
+  if (x.applied) return h("span", { class: "tag soon" }, stageById(x.applied)?.label || x.applied);
+  if (x.resurfaced) return h("span", { class: "tag soon", title: x.resurfaced.map((c) => c.text).join("; ") }, "changed");
+  if (x.state === "saved") return h("span", { class: "tag" }, "saved");
+  if (x.state === "later") return h("span", { class: "tag muted" }, "later");
+  if (x.state === "dismissed") return h("span", { class: "tag muted" }, x.legacy ? "not interested" : "dismissed");
+  if (x.entry) return h("span", { class: "tag" }, stageById(x.entry.stage)?.label || "tracked");
+  return null;
+}
+
+function feedRow(x) {
+  const r = x.opp, m = x.match;
+  const intake = `${r.season && r.season !== "unknown" ? SEASONS[r.season] : ""}${r.year ? " " + r.year : ""}`.trim();
+  const when = x.days !== null && x.days >= 0 ? daysCell(r.closes) : h("span", { class: "days none" }, intake || "rolling");
+  const isFresh = x.newSinceVisit || (isNew(r) && state.section !== "new");
+  return h("li", {
+    class: ["feed-row", r.id === state.focusId ? "focused" : "", r.id === state.detailId ? "selected" : ""].join(" ").trim(),
+    dataset: { id: r.id }, role: "option", "aria-selected": String(r.id === state.detailId), tabindex: "-1",
+    onclick: () => { focusRow(r.id); openDetail(r.id); },
+  },
+  h("div", { class: "feed-line" }, h("span", { class: "firm" }, r.firm_name), when),
+  h("div", { class: "feed-title" }, h("span", { class: "role-title" }, r.title), isFresh ? h("span", { class: "new" }, "new") : null, stateTag(x)),
+  h("div", { class: "feed-meta" }, catTag(m), h("span", null, functionLabel(m.role.function)), placeOf(r) ? h("span", null, placeOf(r)) : null,
+    state.section === "new" && r.first_seen ? h("span", null, `found ${shortDate(r.first_seen)}`) : null));
+}
+
+function sectionTabs(feed) {
+  const tab = (k, cls = "") => h("button", { class: `tab ${cls}`.trim(), type: "button", role: "tab", "aria-selected": String(state.section === k),
+    onclick: () => { state.section = k; state.feedLimit = 60; savePrefs(); renderView(); $("#view").scrollTop = 0; } },
+  SECTIONS[k], h("span", { class: "num" }, String(feed.counts[k] + (k === "closing" ? feed.opening.length : 0))));
+  return h("div", { class: "tabs", role: "tablist", "aria-label": "Feed sections" },
+    PRIMARY_SECTIONS.map((k) => tab(k)), h("span", { class: "tabs-sep", "aria-hidden": "true" }), MORE_SECTIONS.map((k) => tab(k, "minor")));
+}
+
+function suggestionBanner(t) {
+  const now = Date.now();
+  const s = targets.suggestions(t.id).find((x) => x.status === "pending");
+  if (!s) return null;
+  const set = (status, extra) => targets.setSuggestions(t.id, resolveSuggestion(targets.suggestions(t.id), s.id, status, now, extra));
+  const examples = s.evidence.map((id) => state.byId.get(id)).filter(Boolean).slice(0, 5);
+  return h("section", { class: "suggestion", "aria-label": "Suggested preference change" },
+    h("p", { class: "suggestion-text" }, s.text),
+    h("p", { class: "sub" }, s.effect, " Nothing changes unless you apply it."),
+    examples.length ? h("details", { class: "evidence" }, h("summary", { class: "sub" }, `Based on ${plural(s.evidence.length, "decision")}`),
+      h("ul", { class: "history" }, examples.map((r) => h("li", null, `${r.firm_name} — ${r.title}`)))) : null,
+    h("div", { class: "stage-actions" },
+      h("button", { class: "btn", type: "button", onclick: () => {
+        const rev = targets.setPrefs(t.id, applySuggestion(t.prefs, s), { reason: "suggestion", suggestion: s.id });
+        set("accepted", { revision: rev?.id || null });
+        showUndo(`Updated “${t.name}”`, () => { if (rev) targets.revert(t.id, rev.id); targets.setSuggestions(t.id,
+          resolveSuggestion(targets.suggestions(t.id), s.id, "reverted", Date.now())); });
+      } }, "Apply suggestion"),
+      h("button", { class: "btn ghost", type: "button", onclick: () => set("deferred") }, "Not now"),
+      h("button", { class: "btn ghost", type: "button", onclick: () => set("rejected") }, "Dismiss suggestion")));
+}
+
+function renderForYou(view) {
+  const t = targets.active();
+  if (state.editing || !t) { renderTargetEditor(view); return; }
+  const feed = computeFeed();
+  if (!SECTIONS[state.section]) state.section = "top";
+  const all = feed.sections[state.section];
+  const rows = state.query ? all.filter((x) => searchRoles([x.opp], state.query).length) : all;
+  const c = feed.counts;
+  setMeta([[c.top, c.top === 1 ? "top or good match" : "top or good matches"], [c.new, "new"], c.closing ? [c.closing, "closing soon"] : null,
+    c.review ? [c.review, "to review"] : null]);
+  const shown = rows.slice(0, state.feedLimit);
+  state.rowIds = shown.map((x) => x.opp.id);
+  const list = h("ul", { class: "feed-list", role: "listbox", "aria-label": SECTIONS[state.section] }, shown.map(feedRow));
+  const empty = EMPTY_SECTION[state.section];
+  const opening = state.section === "closing" && feed.opening.length ? h("section", { class: "opening", "aria-label": "Opening soon" },
+    h("h2", { class: "label" }, "Opening soon — recurring programs"),
+    h("ul", { class: "history" }, feed.opening.map((o) => h("li", null, h("span", { class: "date" }, shortDate(o.date)),
+      h("a", { href: "#programs/" + o.program.id }, `${o.program.employer_name || o.program.employer_id} — ${o.program.name}`),
+      h("span", { class: "sub" }, o.estimate ? " · estimated from earlier years, not announced" : " · opening date announced"))))) : null;
+  const strong = c.top + c.review;
+  view.append(h("div", { class: "feed" },
+    suggestionBanner(t),
+    sectionTabs(feed),
+    state.section === "top" && !c.top ? h("p", { class: "feed-note" }, strong ? "" : "Few postings fit this target's functions today. ",
+      h("button", { class: "link", type: "button", onclick: () => editTarget(t.id) }, "Broaden the target"), " · ",
+      h("button", { class: "link", type: "button", onclick: () => { state.section = "adjacent"; renderView(); } }, `See ${plural(c.adjacent, "adjacent role")}`)) : null,
+    rows.length ? list : opening ? null : emptyState(empty[0], state.query ? `Nothing in this section matches “${state.query}”.` : empty[1],
+      state.section === "dismissed" || state.section === "top" ? h("button", { class: "btn", type: "button", onclick: () => setDiscoverMode("all") }, "Open All opportunities") : null),
+    rows.length > shown.length ? h("button", { class: "btn ghost show-more", type: "button", onclick: () => { state.feedLimit += 60; renderView(); } },
+      `Show ${Math.min(60, rows.length - shown.length)} more of ${rows.length - shown.length}`) : null,
+    opening,
+    h("p", { class: "feed-foot sub" }, `Ranked for “${t.name}” from its preferences; categories are an order, not a chance of an offer. `,
+      `${state.roles.length} postings evaluated in ${feed.ms} ms. `, h("button", { class: "link", type: "button", onclick: () => setDiscoverMode("all") }, "All opportunities")),
+  ));
+  // Keep a posting selected so the right pane is never empty on a wide screen.
+  const want = state.pendingSelect && state.rowIds.includes(state.pendingSelect) ? state.pendingSelect
+    : state.detailId && state.rowIds.includes(state.detailId) ? state.detailId : null;
+  state.pendingSelect = null;
+  const wide = window.matchMedia("(min-width: 901px)").matches;
+  if (want) requestAnimationFrame(() => { if (state.detailId !== want) openDetail(want, { focus: false }); focusRow(want); });
+  else if (wide && state.rowIds.length) requestAnimationFrame(() => { focusRow(state.rowIds[0]); openDetail(state.rowIds[0], { focus: false }); });
+  else if (state.detailId && !feedItem(state.detailId)) closeDetail();
+}
+
+function setDiscoverMode(mode) {
+  state.discoverMode = mode;
+  state.editing = null;
+  savePrefs();
+  if (state.detailId) closeDetail();
+  renderToolbar();
+  renderView();
+}
+
+// --- decisions -----------------------------------------------------------------------------------------------
+let undoTimer;
+function showUndo(text, onUndo, { reasons = null } = {}) {
+  const bar = $("#undo");
+  clearTimeout(undoTimer);
+  const close = () => { bar.hidden = true; bar.replaceChildren(); state.undo = null; };
+  state.undo = () => { onUndo(); close(); toast("Undone"); };
+  fill(bar, h("span", null, text),
+    h("button", { class: "link", type: "button", onclick: state.undo }, "Undo ", h("kbd", null, "u")),
+    reasons ? h("span", { class: "undo-reasons", role: "group", "aria-label": "Why? (optional)" }, h("span", { class: "sub" }, "Why?"),
+      Object.entries(DISMISS_REASONS).map(([k, label]) => h("button", { class: "chip", type: "button", onclick: (ev) => {
+        reasons(k);
+        bar.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c === ev.currentTarget)));
+        clearTimeout(undoTimer); undoTimer = setTimeout(close, 4000);
+      } }, label))) : null,
+    h("button", { class: "link", type: "button", "aria-label": "Close", onclick: close }, "×"));
+  bar.hidden = false;
+  undoTimer = setTimeout(close, reasons ? 12000 : 8000);
+}
+
+function neighbour(id) {
+  const i = state.rowIds.indexOf(id);
+  return i < 0 ? null : state.rowIds[i + 1] || state.rowIds[i - 1] || null;
+}
+function otherTargetSaved(id, except) {
+  return targets.list().some((p) => p.id !== except && targets.decision(p.id, id)?.state === "saved");
+}
+function feedSave(id) {
+  const t = targets.active(), x = feedItem(id), role = resolve(id);
+  if (!t || !x || !role) return;
+  if (x.state === "saved") {
+    targets.decide(t.id, id, null);
+    const e = tracker.get(id);
+    if (e && e.stage === "saved" && e.origin_target === t.id && !otherTargetSaved(id, t.id)) tracker.setStage(role, null);
+    toast("No longer saved in this target");
+    return;
+  }
+  targets.decide(t.id, id, "saved", { fp: fingerprint(x.opp, x.match, t) });
+  if (!tracker.get(id)) { tracker.setStage(role, "saved"); tracker.update(id, { origin_target: t.id }); }
+  refreshSuggestions(t);
+  toast(`Saved · ${role.firm_name} — also shortlisted in Pipeline`);
+}
+function feedDismiss(id) {
+  const t = targets.active(), x = feedItem(id);
+  if (!t || !x) return;
+  if (x.state === "dismissed" && !x.resurfaced) return feedRestore(id);
+  state.pendingSelect = neighbour(id);
+  const ev = targets.decide(t.id, id, "dismissed", { fp: fingerprint(x.opp, x.match, t) });
+  refreshSuggestions(t);
+  showUndo(`Dismissed from “${t.name}” — still in All opportunities`, () => { state.pendingSelect = id; targets.undo(t.id, ev.id); refreshSuggestions(t); },
+    { reasons: (code) => { targets.setReason(t.id, id, code); refreshSuggestions(t); } });
+}
+function feedRestore(id) {
+  const t = targets.active(), x = feedItem(id);
+  if (!t || !x) return;
+  state.pendingSelect = id;
+  targets.decide(t.id, id, x.legacy ? "restored" : null, { action: "restore" });
+  refreshSuggestions(t);
+  toast(`Back in “${t.name}”`);
+}
+function feedLater(id) {
+  const t = targets.active(), x = feedItem(id);
+  if (!t || !x) return;
+  targets.decide(t.id, id, x.state === "later" ? null : "later");
+  toast(x.state === "later" ? "Back in the queue" : "Marked to review later — kept, listed after the rest");
+}
+function feedApplied(id) {
+  const t = targets.active(), role = resolve(id);
+  if (!t || !role) return;
+  const e = tracker.get(id);
+  if (e && stageById(e.stage)?.rank >= 1) { toast(`Already ${stageById(e.stage).label.toLowerCase()} — see Pipeline`); return; }
+  state.pendingSelect = neighbour(id);
+  tracker.setStage(role, "applied");
+  if (!e?.origin_target) tracker.update(id, { origin_target: t.id });
+  targets.log(t.id, id, "applied");
+  refreshSuggestions(t);
+  toast(`Applied · ${role.firm_name} — tracked in Pipeline for every target`);
+}
+
+// --- detail pane for one posting under the active target -------------------------------------------------------
+const ROLE_METHOD = { title: "from the job title", department: "from the department the job board states",
+  description: "from the description only", ai: "read by AI from the posting", user: "corrected by you", none: "not determined" };
+
+function decisionButtons(x) {
+  const id = x.opp.id;
+  const applied = x.applied || (x.entry && stageById(x.entry.stage)?.rank >= 1);
+  const url = safeUrl(x.opp.url);
+  return h("div", { class: "detail-cta" },
+    url ? h("a", { class: "btn primary", href: url, target: "_blank", rel: "noopener noreferrer" }, x.opp.status === "open" ? "Open the ad ↗" : "View original ad ↗") : null,
+    h("button", { class: "btn", type: "button", "aria-pressed": String(x.state === "saved"), onclick: () => feedSave(id) },
+      svgStar(x.state === "saved"), x.state === "saved" ? "Saved" : "Save", h("kbd", null, "s")),
+    x.state === "dismissed" && !x.resurfaced
+      ? h("button", { class: "btn", type: "button", onclick: () => feedRestore(id) }, "Restore")
+      : h("button", { class: "btn", type: "button", onclick: () => feedDismiss(id) }, x.resurfaced ? "Dismiss again" : "Dismiss", h("kbd", null, "x")),
+    h("button", { class: "btn ghost", type: "button", disabled: applied ? true : null, onclick: () => feedApplied(id) },
+      applied ? stageById(x.applied || x.entry.stage)?.label : "Mark applied", applied ? null : h("kbd", null, "a")),
+    x.state === "dismissed" ? null : h("button", { class: "btn ghost", type: "button", "aria-pressed": String(x.state === "later"), onclick: () => feedLater(id) },
+      x.state === "later" ? "Later ✓" : "Later", h("kbd", null, "l")));
+}
+
+function roleControl(x) {
+  const m = x.match, r = m.role;
+  const current = targets.override(x.opp.id);
+  const groups = Object.entries(FAMILIES).map(([fam, label]) => h("optgroup", { label },
+    Object.entries(FUNCTIONS).filter(([, f]) => f.family === fam).map(([id, f]) => h("option", { value: id, selected: current === id }, f.label))));
+  const tracked = x.opp.role?.function && x.opp.role.function !== "unknown" ? functionLabel(x.opp.role.function) : "not determined";
+  return h("div", { class: "role-line" },
+    h("span", null, functionLabel(r.function)),
+    h("span", { class: "sub" }, ` · ${ROLE_METHOD[r.method] || r.method}${r.evidence && r.method !== "user" ? `: “${r.evidence}”` : ""}`),
+    r.functions.length > 1 ? h("span", { class: "sub" }, ` · also ${r.functions.slice(1, 4).map((f) => lower(functionLabel(f))).join(", ")}`) : null,
+    h("label", { class: "role-fix" }, h("span", { class: "visually-hidden" }, "Correct the role function"),
+      h("select", { onchange: (ev) => { targets.setOverride(x.opp.id, ev.target.value || null); toast(ev.target.value ? "Role corrected — every target re-ranks it" : "Correction removed"); } },
+        h("option", { value: "", selected: !current }, current ? `Use the tracker's: ${tracked}` : "Correct…"), groups)));
+}
+const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+
+function reasonList(reasons) {
+  return h("ul", { class: "reasons" }, reasons.map((r) => h("li", { class: `t-${{ "+": "pos", "-": "neg", "?": "unk", "·": "info" }[r.tone]}` },
+    h("span", { class: "mark", "aria-hidden": "true" }, MARK[r.tone]), h("span", null,
+      h("span", { class: "visually-hidden" }, { "+": "In favour: ", "-": "Against: ", "?": "Uncertain: ", "·": "Note: " }[r.tone]), r.text))));
+}
+
+function renderFeedDetail(pane, role, x) {
+  const m = x.match;
+  const fit = m.reasons.filter((r) => !r.code.startsWith("elig_"));
+  const a = role.assessment;
+  const facts = roleFacts(role).filter(([k]) => !["Sector", "Published", "First seen", "Last confirmed"].includes(k));
+  facts.splice(2, 0, ["Function", roleControl(x)]);
+  const desc = (role.description || "").trim();
+  const reliability = [
+    ["Status", role.lifecycle === "pending" ? "Found by search or an aggregator; not yet confirmed on the employer's own site"
+      : role.lifecycle === "unavailable" ? "Its sources are failing; not confirmed for over a week (not closed)"
+        : role.status === "open" ? "Listed on the employer's own source" : `Closed${role.closed_on ? " on " + formatDate(role.closed_on) : ""}`],
+    ["Last confirmed", role.last_checked ? formatDate(role.last_checked) : "—"],
+    ["Published", role.published_at ? formatDate(role.published_at) + " (stated by the source)" : "Not stated"],
+    ["First found", role.first_seen ? formatDate(role.first_seen) + " (by the tracker)" : "—"],
+  ];
+  fill(pane,
+    h("header", { class: "detail-head" },
+      h("div", { class: "detail-top" }, h("span", { class: "detail-firm" }, role.firm_name),
+        h("button", { class: "btn ghost detail-close", type: "button", "aria-label": "Close details", onclick: closeDetail }, "Close ", h("kbd", null, "esc"))),
+      h("h2", null, role.title),
+      decisionButtons(x),
+      h("p", { class: "detail-status" }, catTag(m), " ", h("span", { class: `elig ${m.eligibility}` }, ELIG_SHORT[m.eligibility] || m.eligibility),
+        x.days !== null && x.days >= 0 ? [" · ", daysCell(role.closes)] : null, stateTag(x))),
+    x.resurfaced ? h("section", { class: "detail-section resurfaced", "aria-label": "Changed since you dismissed it" },
+      h("h3", { class: "label" }, "Previously dismissed — changed since"),
+      h("ul", { class: "reasons" }, x.resurfaced.map((c) => h("li", null, h("span", { class: "mark" }, "!"), c.text))),
+      h("p", { class: "sub" }, `You dismissed it on ${formatDate(x.decision.at)}${x.decision.reason ? ` (${DISMISS_REASONS[x.decision.reason]?.toLowerCase()})` : ""}. That stays in the history.`),
+      h("div", { class: "stage-actions" }, h("button", { class: "btn", type: "button", onclick: () => feedRestore(x.opp.id) }, "Restore to the feed"))) : null,
+    h("section", { class: "detail-section", "aria-label": "Why it matches" },
+      h("h3", { class: "label" }, `Why it ${["top", "good"].includes(m.category) ? "matches" : "ranks here"} · ${targets.active().name}`),
+      reasonList(fit)),
+    h("section", { class: "detail-section", "aria-label": "Requirements and eligibility" },
+      h("h3", { class: "label" }, "Requirements & eligibility"),
+      a ? [h("p", { class: "detail-verdict" }, h("span", { class: `elig ${a.outcome}` }, a.label)),
+        h("ul", { class: "reasons" }, a.lines.map((l) => h("li", { class: `r-${l.result}` }, h("span", { class: "mark", "aria-hidden": "true" }, RESULT[l.result] || "·"), l.reason)))] : null,
+      !a || a.outcome === "insufficient" ? h("p", { class: "sub" }, h("a", { href: "#profile" }, "Complete your profile"), " to assess more. Eligibility is separate from the match.") : null),
+    h("dl", { class: "facts" }, facts.flatMap(([k, v]) => [h("dt", null, k), h("dd", null, v)])),
+    desc ? h("section", { class: "detail-section", "aria-label": "About the internship" }, h("h3", { class: "label" }, "About the internship"),
+      h("p", { class: "desc" }, desc.length >= 600 ? desc + "…" : desc),
+      safeUrl(role.url) ? h("p", { class: "sub" }, "Excerpt. ", h("a", { href: safeUrl(role.url), target: "_blank", rel: "noopener noreferrer" }, "Read the full ad ↗")) : null) : null,
+    h("section", { class: "detail-section", "aria-label": "Source reliability" }, h("h3", { class: "label" }, "Source"),
+      h("dl", { class: "facts compact" }, reliability.flatMap(([k, v]) => [h("dt", null, k), h("dd", null, v)]))),
+    role.sources ? evidenceSection(role) : null,
+    trackingSection(role),
+    h("p", { class: "detail-note" }, "Each fact shows where it came from. AI-read facts can be wrong; check the original ad before applying."),
+  );
+}
+
+// --- target switcher -------------------------------------------------------------------------------------------
+function targetMenu() {
+  const t = targets.active();
+  const active = targets.list(), archived = targets.list({ archived: true });
+  return h("details", { class: "menu target-menu", dataset: { key: "target" } },
+    h("summary", { "aria-label": `Switch career target (current: ${t?.name || "none"})` }, "Switch target"),
+    h("div", { class: "menu-pop", role: "group", "aria-label": "Career targets" },
+      active.map((p) => h("label", { class: "opt" }, h("input", { type: "radio", name: "target", checked: p.id === t?.id,
+        onchange: () => { targets.activate(p.id); state.section = "top"; state.feedLimit = 60; if (state.detailId) closeDetail(); renderToolbar(); renderView(); } }),
+      h("span", null, p.name), h("span"))),
+      h("div", { class: "menu-actions" },
+        h("button", { class: "link", type: "button", onclick: () => editTarget("new") }, "New target"),
+        t ? h("button", { class: "link", type: "button", onclick: () => editTarget(t.id) }, "Edit current") : null),
+      archived.length ? [h("p", { class: "hint" }, "Archived"), archived.map((p) => h("div", { class: "opt" }, h("span"), h("span", null, p.name),
+        h("button", { class: "link", type: "button", onclick: () => { targets.restore(p.id); renderToolbar("target"); toast(`Restored “${p.name}”`); } }, "Restore")))] : null));
+}
+
+function editTarget(id) {
+  state.editing = id;
+  const p = id !== "new" && targets.get(id);
+  state.draft = p ? { mode: "edit", id: p.id, step: 0, name: p.name, description: p.description || "", prefs: structuredClone(p.prefs) }
+    : { mode: "new", step: 1, name: "", description: "", prefs: emptyPrefs() };
+  if (state.detailId) closeDetail();
+  renderToolbar();
+  renderView();
+  $("#view").scrollTop = 0;
+}
+
+// --- target editor: guided setup (four short steps) and editing (one page) ---------------------------------------
+const EXAMPLE_NAMES = ["Investment Banking — Switzerland", "Private Equity", "Asset Management — Europe", "General finance", "Off-cycle opportunities"];
+const STEPS = ["Target", "Functions", "Preferences", "Review"];
+const LEVEL_SHORT = { "": "—", core: "Strong", ok: "OK", low: "Lower", exclude: "Exclude" };
+const EEA_CODES = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO"];
+
+function startDraft() {
+  if (state.draft) return state.draft;
+  const saved = targets.draft();
+  if (saved) return (state.draft = { mode: "onboarding", ...saved });
+  const legacy = prefsFromLegacy(profile.get());
+  return (state.draft = { mode: "onboarding", step: 1, name: "", description: "", prefs: legacy?.prefs || emptyPrefs(), note: legacy?.note || null });
+}
+
+let draftTimer;
+function updateDraft(patch, { redraw = true } = {}) {
+  const d = state.draft;
+  Object.assign(d, patch.prefs ? { ...patch, prefs: { ...d.prefs, ...patch.prefs } } : patch);
+  if (d.mode === "onboarding") { clearTimeout(draftTimer); draftTimer = setTimeout(() => targets.saveDraft({ step: d.step, name: d.name, description: d.description, prefs: d.prefs, note: d.note }), 200); }
+  if (redraw) setTimeout(redrawEditor, 0);
+}
+function redrawEditor() {
+  if (state.view !== "discover" || state.discoverMode !== "foryou" || (!state.editing && targets.active())) return;
+  const view = $("#view");
+  const controls = () => [...view.querySelectorAll("input, select, textarea, button")];
+  const i = controls().indexOf(document.activeElement);
+  const scroll = view.scrollTop;
+  renderView();
+  view.scrollTop = scroll;
+  if (i >= 0) controls()[i]?.focus({ preventScroll: true });
+}
+
+function levelRow(fn, d) {
+  const cur = d.prefs.roles[fn] || "";
+  const set = (lvl) => { const roles = { ...d.prefs.roles }; if (lvl) roles[fn] = lvl; else delete roles[fn]; updateDraft({ prefs: { roles } }); };
+  return h("div", { class: "fn-row", role: "radiogroup", "aria-label": FUNCTIONS[fn].label },
+    h("span", { class: "fn-name" }, FUNCTIONS[fn].label),
+    h("span", { class: "seg" }, Object.entries(LEVEL_SHORT).map(([lvl, text]) => h("label", { class: `seg-opt${cur === lvl ? " on" : ""}`, title: ROLE_LEVELS[lvl] || "No preference" },
+      h("input", { type: "radio", name: `lvl-${fn}`, value: lvl, checked: cur === lvl, onchange: () => set(lvl) }), text))));
+}
+
+function chips(list, nameOf, onRemove) {
+  return list.length ? h("div", { class: "checks" }, list.map((v) => h("span", { class: "chip on" }, nameOf(v),
+    h("button", { class: "link", type: "button", "aria-label": `Remove ${nameOf(v)}`, onclick: () => onRemove(v) }, "×")))) : null;
+}
+
+function toggleIn(list, v, on) { return on ? [...new Set([...list, v])] : list.filter((x) => x !== v); }
+const checksOf = (selected, options, nameOf, onchange) => h("div", { class: "checks" }, options.map((v) => h("label", { class: "toggle" },
+  h("input", { type: "checkbox", checked: selected.includes(v), onchange: (ev) => onchange(toggleIn(selected, v, ev.target.checked)) }), nameOf(v))));
+const hardToggle = (label, checked, disabled, onchange) => h("label", { class: "toggle hard", title: "A requirement: postings that clearly fail it leave this target's feed (unknown values never do)" },
+  h("input", { type: "checkbox", checked, disabled: disabled ? true : null, onchange: (ev) => onchange(ev.target.checked) }), label);
+
+function stepTarget(d) {
+  return h("section", { class: "detail-section" }, h("h2", { class: "section-title" }, "Name this career target"),
+    h("p", { class: "sub" }, "A target is one search strategy with its own preferences, feed and decisions. You can add more later and switch between them in Discover."),
+    h("label", { class: "field" }, h("span", { class: "label" }, "Name"),
+      h("input", { type: "text", value: d.name, maxlength: "80", placeholder: "e.g. Investment Banking — Switzerland", autocomplete: "off",
+        oninput: (ev) => updateDraft({ name: ev.target.value }, { redraw: false }), onchange: () => setTimeout(redrawEditor, 0) })),
+    h("div", { class: "checks examples" }, EXAMPLE_NAMES.map((n) => h("button", { class: "chip", type: "button", onclick: () => updateDraft({ name: n }) }, n))),
+    h("label", { class: "field" }, h("span", { class: "label" }, "Note (optional)"),
+      h("input", { type: "text", value: d.description, maxlength: "280", placeholder: "What this target is for",
+        oninput: (ev) => updateDraft({ description: ev.target.value }, { redraw: false }) })));
+}
+
+function stepFunctions(d) {
+  const finance = Object.keys(FAMILIES).filter((f) => !["business", "technology"].includes(f));
+  const nonFinanceSet = Object.entries(d.prefs.roles).some(([fn]) => !FUNCTIONS[fn]?.finance);
+  return h("section", { class: "detail-section" }, h("h2", { class: "section-title" }, "Which kinds of role?"),
+    h("p", { class: "sub" }, "Strong ranks a function first; OK accepts it; Lower keeps it but ranks it down; Exclude removes it from this target's feed. Functions you leave at — are judged by how close they are to the ones you chose."),
+    h("label", { class: "toggle any" }, h("input", { type: "checkbox", checked: d.prefs.anyFinance, onchange: (ev) => updateDraft({ prefs: { anyFinance: ev.target.checked } }) }),
+      "Any finance function counts as OK"),
+    h("div", { class: "fn-grid" }, finance.map((fam) => h("div", { class: "fn-family" }, h("h3", { class: "label" }, FAMILIES[fam]),
+      Object.keys(FUNCTIONS).filter((fn) => FUNCTIONS[fn].family === fam).map((fn) => levelRow(fn, d))))),
+    h("details", { class: "evidence", open: nonFinanceSet ? true : null }, h("summary", { class: "label" }, "Non-finance functions (technology, operations, HR…)"),
+      h("p", { class: "sub" }, "These already rank low in a finance target. Set them only to accept or exclude one explicitly."),
+      h("div", { class: "fn-grid" }, ["business", "technology"].map((fam) => h("div", { class: "fn-family" }, h("h3", { class: "label" }, FAMILIES[fam]),
+        Object.keys(FUNCTIONS).filter((fn) => FUNCTIONS[fn].family === fam).map((fn) => levelRow(fn, d)))))));
+}
+
+function stepPreferences(d) {
+  const p = d.prefs;
+  const seen = optionCounts((r) => r.countries || [], state.roles);
+  const countries = [...new Set(["CH", "GB", "DE", "FR", "IT", "ES", "NL", "LU", "IE", "AT", "BE", "PE", ...[...seen.keys()]])]
+    .filter((c) => /^[A-Z]{2}$/.test(c)).sort((a, b) => (seen.get(b) || 0) - (seen.get(a) || 0) || countryName(a).localeCompare(countryName(b))).slice(0, 24);
+  const year = Number(state.today.slice(0, 4));
+  const empNames = new Map(state.market.employers.map((e) => [e.id, e.name]));
+  const empInput = (kind) => {
+    const list = `emp-${kind}`;
+    const input = h("input", { type: "text", list, placeholder: kind === "prefer" ? "Add a preferred employer" : "Add an employer to exclude", "aria-label": kind === "prefer" ? "Preferred employer" : "Excluded employer",
+      onchange: (ev) => {
+        const id = [...empNames].find(([, n]) => n.toLowerCase() === ev.target.value.trim().toLowerCase())?.[0];
+        if (!id) { toast("Pick a firm from the list"); return; }
+        const other = kind === "prefer" ? "exclude" : "prefer";
+        updateDraft({ prefs: { employers: { [kind]: toggleIn(p.employers[kind], id, true), [other]: p.employers[other].filter((x) => x !== id) } } });
+      } });
+    return [input, h("datalist", { id: list }, [...empNames.values()].sort().map((n) => h("option", { value: n })))];
+  };
+  const [prefIn, prefList] = empInput("prefer");
+  const [exclIn, exclList] = empInput("exclude");
+  const empTypes = [...new Set(state.market.employers.flatMap((e) => e.sectors || []))].filter((s) => FUNCTIONS[s]).sort((a, b) => functionLabel(a).localeCompare(functionLabel(b)));
+  return h("section", { class: "detail-section" }, h("h2", { class: "section-title" }, "Places, timing and employers"),
+    h("p", { class: "sub" }, "All optional. Preferences change the order; a requirement removes postings that clearly fail it. Unknown values never fail a requirement — they are sent to Needs review."),
+    h("div", { class: "field" }, h("span", { class: "label" }, "Countries"),
+      checksOf(p.countries, countries, (c) => `${countryName(c)}`, (v) => updateDraft({ prefs: { countries: v, lowCountries: p.lowCountries.filter((c) => !v.includes(c)) } })),
+      h("div", { class: "stage-actions" }, h("button", { class: "link", type: "button", onclick: () => updateDraft({ prefs: { countries: [...new Set([...p.countries, ...EEA_CODES.filter((c) => seen.has(c))])] } }) }, "Add EU/EEA countries in the data"),
+        p.countries.length ? h("button", { class: "link", type: "button", onclick: () => updateDraft({ prefs: { countries: [], countriesHard: false } }) }, "Clear") : null),
+      p.lowCountries.length ? h("p", { class: "sub" }, "Ranked lower: ", p.lowCountries.map(countryName).join(", "), " ",
+        h("button", { class: "link", type: "button", onclick: () => updateDraft({ prefs: { lowCountries: [] } }) }, "clear")) : null,
+      hardToggle("Only these countries (requirement)", p.countriesHard, !p.countries.length, (v) => updateDraft({ prefs: { countriesHard: v } }))),
+    h("label", { class: "field" }, h("span", { class: "label" }, "Preferred cities (comma-separated, ranked above the rest of the country)"),
+      h("input", { type: "text", value: p.cities.join(", "), placeholder: "e.g. Zurich, Geneva", onchange: (ev) => updateDraft({ prefs: { cities: ev.target.value.split(",").map((x) => x.trim()).filter(Boolean) } }) })),
+    h("div", { class: "field" }, h("span", { class: "label" }, "Formats"),
+      checksOf(p.types, TYPES, typeName, (v) => updateDraft({ prefs: { types: v, lowTypes: p.lowTypes.filter((t) => !v.includes(t)), typesHard: p.typesHard && !!v.length } })),
+      hardToggle("Only these formats (requirement)", p.typesHard, !p.types.length, (v) => updateDraft({ prefs: { typesHard: v } }))),
+    h("div", { class: "field" }, h("span", { class: "label" }, "Intake years"),
+      checksOf(p.years, [year, year + 1, year + 2], String, (v) => updateDraft({ prefs: { years: v, yearsHard: p.yearsHard && !!v.length } })),
+      hardToggle("Only these years (requirement)", p.yearsHard, !p.years.length, (v) => updateDraft({ prefs: { yearsHard: v } }))),
+    h("div", { class: "field" }, h("span", { class: "label" }, "Employers"),
+      h("div", { class: "field-row" }, prefIn, exclIn), prefList, exclList,
+      chips(p.employers.prefer, (id) => `Prefer ${empNames.get(id) || id}`, (id) => updateDraft({ prefs: { employers: { ...p.employers, prefer: p.employers.prefer.filter((x) => x !== id) } } })),
+      chips(p.employers.exclude, (id) => `Exclude ${empNames.get(id) || id}`, (id) => updateDraft({ prefs: { employers: { ...p.employers, exclude: p.employers.exclude.filter((x) => x !== id) } } }))),
+    h("div", { class: "field" }, h("span", { class: "label" }, "Kinds of employer (ranked higher)"),
+      checksOf(p.employerTypes, empTypes, functionLabel, (v) => updateDraft({ prefs: { employerTypes: v } }))),
+    h("div", { class: "field" }, h("span", { class: "label" }, "Working languages you want"),
+      checksOf(p.languages, LANG_OPTIONS, languageName, (v) => updateDraft({ prefs: { languages: v } }))),
+    h("p", { class: "sub" }, "Work authorisation, degree and languages you speak are in your ", h("a", { href: "#profile" }, "Profile"), " and apply to every target."));
+}
+
+function summaryLines(prefs) {
+  const by = (lvl) => Object.entries(prefs.roles).filter(([, l]) => l === lvl).map(([fn]) => functionLabel(fn));
+  const empNames = new Map(state.market.employers.map((e) => [e.id, e.name]));
+  const lines = [
+    ["Strongly preferred", by("core").join(", ")], ["Accepted", [...by("ok"), prefs.anyFinance ? "any finance function" : null].filter(Boolean).join(", ")],
+    ["Ranked lower", [...by("low"), ...prefs.lowCountries.map(countryName), ...prefs.lowTypes.map(typeName)].join(", ")],
+    ["Excluded", [...by("exclude"), ...prefs.employers.exclude.map((id) => empNames.get(id) || id)].join(", ")],
+    ["Places", [...prefs.cities, ...prefs.countries.map(countryName)].join(", ") + (prefs.countriesHard ? " — required" : "")],
+    ["Formats", prefs.types.map(typeName).join(", ") + (prefs.typesHard ? " — required" : "")],
+    ["Intake", prefs.years.join(", ") + (prefs.yearsHard ? " — required" : "")],
+    ["Preferred employers", prefs.employers.prefer.map((id) => empNames.get(id) || id).join(", ")],
+  ];
+  return lines.filter(([, v]) => v && v !== " — required");
+}
+
+function stepReview(d) {
+  const v = validatePrefs(d.prefs);
+  let preview = null;
+  if (v.ok && state.data) {
+    const f = buildFeed({ opps: state.roles, target: { id: "preview", created: new Date().toISOString(), prefsVersion: 0, prefs: v.prefs },
+      today: state.today, ctxFor: (o) => ({ employers: state.employers, eligibility: o.eligibility || "insufficient" }) });
+    preview = f.counts;
+  }
+  return h("section", { class: "detail-section" }, h("h2", { class: "section-title" }, d.name || "Review"),
+    h("dl", { class: "facts compact summary" }, summaryLines(v.prefs).flatMap(([k, val]) => [h("dt", null, k), h("dd", null, val)])),
+    preview ? h("p", null, "With today's data: ", h("strong", { class: "num" }, String(preview.top)), " top or good matches, ",
+      h("strong", { class: "num" }, String(preview.review)), " to review, ", h("strong", { class: "num" }, String(preview.adjacent)), " adjacent.") : null,
+    h("p", { class: "sub" }, "Nothing is deleted or hidden from All opportunities: this target only orders and filters its own feed. You can edit it at any time."),
+    v.ok ? null : h("ul", { class: "reasons" }, v.errors.map((e) => h("li", { class: "r-fail" }, h("span", { class: "mark" }, "✕"), e))));
+}
+
+function historySection(p) {
+  const revs = targets.revisions(p.id);
+  if (!revs.length) return null;
+  return h("section", { class: "detail-section" }, h("h2", { class: "section-title" }, "Changes to this target"),
+    h("ul", { class: "history" }, revs.slice(0, 12).map((r) => h("li", null, h("span", { class: "date" }, shortDate(r.at)),
+      { suggestion: "Applied a suggestion", reverted: "Reverted a change", edited: "Edited" }[r.reason] || r.reason, " ",
+      h("button", { class: "link", type: "button", onclick: () => { targets.revert(p.id, r.id); state.draft.prefs = structuredClone(targets.get(p.id).prefs); toast("Change reverted"); redrawEditor(); } }, "undo this change")))));
+}
+
+function renderTargetEditor(view) {
+  const d = state.editing ? state.draft : startDraft();
+  if (!d) { state.editing = null; renderView(); return; }
+  const editing = d.mode === "edit";
+  const p = editing ? targets.get(d.id) : null;
+  const first = !targets.list().length;
+  setMeta([]);
+  $("#view-meta").textContent = first ? "Set up your first career target to get a personalised feed. All opportunities stays available meanwhile."
+    : editing ? `Editing “${p?.name}”` : "A new career target";
+  state.rowIds = [];
+  const v = validatePrefs(d.prefs);
+  const stepOk = (n) => (n === 1 ? !!d.name.trim() : n === 2 ? v.ok || !v.errors.some((e) => /function/i.test(e)) : true);
+  const go = (n) => { if (n > d.step && !stepOk(d.step)) { toast(d.step === 1 ? "Give the target a name" : "Choose at least one function"); return; } updateDraft({ step: n }); $("#view").scrollTop = 0; };
+  const finish = () => {
+    if (!d.name.trim()) { toast("Give the target a name"); return; }
+    if (!v.ok) { toast(v.errors[0]); return; }
+    try {
+      if (editing) {
+        targets.rename(d.id, d.name, d.description);
+        targets.setPrefs(d.id, d.prefs, { reason: "edited" });
+        toast(`Saved “${d.name.trim()}”`);
+      } else {
+        targets.create({ name: d.name, description: d.description, prefs: d.prefs, fromDraft: d.mode === "onboarding" });
+        toast(`“${d.name.trim()}” is active`);
+      }
+    } catch (err) { toast(err.message); return; }
+    state.editing = null; state.draft = null; state.section = "top"; state.feedLimit = 60;
+    renderToolbar(); renderView();
+  };
+  const cancel = () => { state.editing = null; state.draft = null; renderToolbar(); renderView(); };
+  const body = editing ? [stepTarget(d), stepFunctions(d), stepPreferences(d), stepReview(d), historySection(p)]
+    : [[null, stepTarget, stepFunctions, stepPreferences, stepReview][d.step](d)];
+  view.append(h("div", { class: "page-form target-form" },
+    editing ? null : h("ol", { class: "steps", "aria-label": "Setup steps" }, STEPS.map((s, i) => h("li", { class: i + 1 === d.step ? "on" : i + 1 < d.step ? "done" : null,
+      "aria-current": i + 1 === d.step ? "step" : null }, h("button", { class: "link", type: "button", onclick: () => go(i + 1) }, `${i + 1}. ${s}`)))),
+    d.note && !editing ? h("p", { class: "feed-note" }, d.note) : null,
+    body,
+    h("div", { class: "stage-actions form-actions" },
+      editing ? [h("button", { class: "btn primary", type: "button", onclick: finish }, "Save changes"),
+        h("button", { class: "btn ghost", type: "button", onclick: cancel }, "Cancel"),
+        h("span", { class: "spacer" }),
+        h("button", { class: "btn ghost", type: "button", onclick: () => { const id = targets.duplicate(d.id); toast("Duplicated — now editing the copy"); editTarget(id); } }, "Duplicate"),
+        h("button", { class: "btn ghost", type: "button", onclick: () => { targets.archive(d.id); toast(`Archived “${p.name}” — restore it from the target menu`); cancel(); } }, "Archive"),
+        h("button", { class: "btn ghost", type: "button", onclick: () => {
+          if (!confirm(`Delete “${p.name}”? Its preferences, decisions and history are removed from this browser. Applications in Pipeline stay.`)) return;
+          targets.remove(d.id); toast("Target deleted"); cancel(); } }, "Delete")]
+        : [d.step > 1 ? h("button", { class: "btn ghost", type: "button", onclick: () => go(d.step - 1) }, "Back") : null,
+          d.step < 4 ? h("button", { class: "btn primary", type: "button", onclick: () => go(d.step + 1) }, "Next") : h("button", { class: "btn primary", type: "button", onclick: finish }, "Activate target"),
+          !first ? h("button", { class: "btn ghost", type: "button", onclick: cancel }, "Cancel") : null,
+          d.step === 2 || d.step === 3 ? h("button", { class: "link", type: "button", onclick: () => go(4) }, "Skip to review") : null])));
 }
 
 // Pipeline ---------------------------------------------------------------------------------------------------------
@@ -1315,7 +1920,7 @@ function renderProfile(view) {
         h("button", { class: "link", type: "button", onclick: () => set({ languages: p.languages.filter((_, j) => j !== i) }) }, "remove")))) : null,
       h("div", { class: "stage-actions" }, h("button", { class: "btn", type: "button", onclick: () => set({ languages: [...(p.languages || []), { code: "en", level: "fluent" }] }) }, "Add a language"))),
     h("section", { class: "detail-section" }, h("h2", { class: "section-title" }, "What you are looking for"),
-      h("p", { class: "sub" }, "Used only to order the list (Fit). Nothing is hidden because of these."),
+      h("p", { class: "sub" }, "Used only to order the All opportunities table (Fit). Nothing is hidden because of these. Career targets in Discover › For you have their own, separate preferences."),
       field("Sectors", checks(p.prefs.sectors, Object.keys(SECTORS), (x) => SECTORS[x], (v) => set({ prefs: { ...p.prefs, sectors: v } }))),
       field("Countries", checks(p.prefs.countries, ["CH", "PE", "GB", "DE", "FR", "IT", "ES", "NL", "LU", "IE", "AT", "BE"], countryName, (v) => set({ prefs: { ...p.prefs, countries: v } }))),
       field("Formats", checks(p.prefs.types, TYPE_OPTIONS, (x) => SEASONS[x], (v) => set({ prefs: { ...p.prefs, types: v } })))),
@@ -1337,10 +1942,13 @@ function renderView() {
   const scroll = view.scrollTop;
   view.replaceChildren();
   view.setAttribute("aria-busy", "false");
-  $("#view-title").textContent = VIEWS[state.view];
+  const crumb = state.view === "discover" && state.discoverMode === "foryou" && targets.active() && !state.editing
+    ? targets.active().name : state.view === "discover" && state.discoverMode === "all" ? "All opportunities" : null;
+  fill($("#view-title"), VIEWS[state.view], crumb ? h("span", { class: "crumb" }, " / ", crumb) : null);
   ({ discover: renderDiscover, pipeline: renderPipeline, deadlines: renderDeadlines, programs: renderPrograms,
     firms: renderFirms, outreach: renderOutreach, sources: renderSources, profile: renderProfile })[state.view](view);
-  $("#toolbar").querySelector(".search").hidden = state.view === "profile";
+  const editor = state.view === "discover" && state.discoverMode === "foryou" && (state.editing || !targets.active());
+  $("#toolbar").querySelector(".search").hidden = state.view === "profile" || editor;
   fitTables();
   view.scrollTop = scroll;
   if (state.focusId && !state.rowIds.includes(state.focusId)) state.focusId = null;
@@ -1373,10 +1981,12 @@ function syncHash() {
 }
 
 // --- focus & keyboard -----------------------------------------------------------------------------------------------
+const ROW = ".grid tbody tr, .feed-row";
+const rowEl = (id) => document.querySelector(`.grid tbody tr[data-id="${CSS.escape(id)}"], .feed-row[data-id="${CSS.escape(id)}"]`);
 function focusRow(id, { scroll = false } = {}) {
   state.focusId = id;
-  document.querySelectorAll(".grid tbody tr.focused").forEach((tr) => tr.classList.remove("focused"));
-  const tr = document.querySelector(`.grid tbody tr[data-id="${CSS.escape(id)}"]`);
+  document.querySelectorAll(ROW).forEach((tr) => tr.classList.remove("focused"));
+  const tr = rowEl(id);
   if (tr) {
     tr.classList.add("focused");
     if (scroll) tr.scrollIntoView({ block: "nearest" });
@@ -1405,17 +2015,20 @@ function onKey(ev) {
   if (typing || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   const id = state.focusId || state.detailId;
   const roleView = !DETAIL_FOR_VIEW[state.view];
+  const feed = forYouActive();
   const handlers = {
     "/": () => $("#search").focus(),
     ...Object.fromEntries(NUMBERED.map((v, i) => [String(i + 1), () => setView(v)])),
     j: () => moveFocus(1), ArrowDown: () => moveFocus(1),
     k: () => moveFocus(-1), ArrowUp: () => moveFocus(-1),
     Enter: () => id && openDetail(id),
-    s: () => id && roleView && toggleSaved(id),
-    a: () => id && roleView && setStage(id, "applied"),
+    s: () => id && roleView && (feed ? feedSave(id) : toggleSaved(id)),
+    a: () => id && roleView && (feed ? feedApplied(id) : setStage(id, "applied")),
     "]": () => id && roleView && stepStage(id, 1),
     "[": () => id && roleView && stepStage(id, -1),
-    x: () => id && roleView && dismissed.toggle(id),
+    x: () => id && roleView && (feed ? feedDismiss(id) : dismissed.toggle(id)),
+    l: () => feed && id && feedLater(id),
+    u: () => state.undo?.(),
     o: () => { const r = id && roleView && resolve(id); const u = r && safeUrl(r.url); if (u) window.open(u, "_blank", "noopener"); },
     "?": () => $("#shortcuts").showModal(),
   };
@@ -1441,14 +2054,16 @@ function openDetail(id, { focus = true } = {}) {
   if (kind === "role" && !resolve(id)) return;
   state.detailKind = kind;
   state.detailId = id;
-  document.querySelectorAll(".grid tbody tr.selected").forEach((tr) => tr.classList.remove("selected"));
-  document.querySelector(`.grid tbody tr[data-id="${CSS.escape(id)}"]`)?.classList.add("selected");
+  document.querySelectorAll(ROW).forEach((tr) => { tr.classList.remove("selected"); if (tr.matches(".feed-row")) tr.setAttribute("aria-selected", "false"); });
+  const sel = rowEl(id);
+  sel?.classList.add("selected");
+  if (sel?.matches(".feed-row")) sel.setAttribute("aria-selected", "true");
   $(".app").classList.add("has-detail");
   const pane = $("#detail");
   pane.hidden = false;
   renderDetail();
   // The table just got narrower: refit it and keep the chosen row in sight.
-  requestAnimationFrame(() => document.querySelector(`.grid tbody tr[data-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" }));
+  requestAnimationFrame(() => rowEl(id)?.scrollIntoView({ block: "nearest" }));
   if (focus && window.matchMedia("(max-width: 900px)").matches) pane.querySelector(".detail-close")?.focus();
   syncHash();
 }
@@ -1458,7 +2073,7 @@ function closeDetail() {
   state.detailId = null;
   $("#detail").hidden = true;
   $(".app").classList.remove("has-detail");
-  document.querySelectorAll(".grid tbody tr.selected").forEach((tr) => tr.classList.remove("selected"));
+  document.querySelectorAll(ROW).forEach((tr) => tr.classList.remove("selected"));
   if (id) focusRow(id, { scroll: true });
   syncHash();
 }
@@ -1476,7 +2091,16 @@ function renderDetail() {
   const url = safeUrl(role.url);
   const closed = role.status !== "open";
   const d = daysUntil(role.closes, state.today);
-  const facts = [
+  if (forYouActive() && feedItem(id)) return renderFeedDetail(pane, role, feedItem(id));
+  const facts = roleFacts(role);
+  const program = role.program_id && state.programs.get(role.program_id);
+  if (program) facts.push(["Program", h("a", { href: "#programs/" + program.id }, program.name)]);
+  renderRoleDetail(pane, role, { url, closed, d, facts });
+}
+
+function roleFacts(role) {
+  const closed = role.status !== "open";
+  return [
     ["Location", [role.city, (role.countries || []).map(countryName).join(", ")].filter(Boolean).join(" — ") || "Not stated"],
     ["Intake", `${role.season && role.season !== "unknown" ? SEASONS[role.season] : "Not stated"}${role.year ? " " + role.year : ""}`],
     ["Sector", SECTORS[role.sector] || role.sector || "—"],
@@ -1486,8 +2110,9 @@ function renderDetail() {
     ["First seen", role.first_seen ? formatDate(role.first_seen) + " (by the tracker)" : "—"],
     ["Last confirmed", role.last_checked ? formatDate(role.last_checked) : "—"],
   ];
-  const program = role.program_id && state.programs.get(role.program_id);
-  if (program) facts.push(["Program", h("a", { href: "#programs/" + program.id }, program.name)]);
+}
+
+function renderRoleDetail(pane, role, { url, closed, d, facts }) {
   fill(pane, 
     h("header", { class: "detail-head" },
       h("div", { class: "detail-top" },
@@ -1626,7 +2251,7 @@ function applyTheme(name) {
 
 // --- export / import ------------------------------------------------------------------------------------------------
 function exportTracker() {
-  const blob = new Blob([exportAll({ tracker, profile, crm, dismissed })], { type: "application/json" });
+  const blob = new Blob([exportAll({ tracker, profile, crm, dismissed, targets })], { type: "application/json" });
   const a = h("a", { href: URL.createObjectURL(blob), download: `fintrack-applications-${state.today}.json` });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -1634,7 +2259,7 @@ function exportTracker() {
 }
 async function importTracker(file) {
   try {
-    importAll(await file.text(), { tracker, profile, crm, dismissed });
+    importAll(await file.text(), { tracker, profile, crm, dismissed, targets });
     toast(`Imported · ${plural(tracker.count(), "tracked role")}`);
   } catch (err) {
     toast(`Import failed: ${err.message}`);
@@ -1760,6 +2385,14 @@ function init() {
   const rederive = () => { if (!state.data) return; derive(); renderView(); renderDetail(); };
   profile.onChange(() => { if (state.view !== "profile") rederive(); else derive(); });
   dismissed.onChange(rederive);
+  // Visits and the onboarding draft change nothing on screen; everything else re-ranks the feed.
+  targets.onChange((kind) => {
+    if (!state.data || kind === "visit" || kind === "draft") return;
+    renderToolbar();
+    renderView();
+    if (state.focusId) focusRow(state.focusId);
+    renderDetail();
+  });
   crm.onChange(() => { if (!state.data) return; renderView(); renderCounts(); });
   tracker.onChange((kind) => {
     if (!state.data) return;
