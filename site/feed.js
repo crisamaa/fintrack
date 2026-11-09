@@ -14,7 +14,7 @@
 //
 // A posting can be in several sections (a top match closing soon) but never twice in one.
 
-import { evaluate, compareMatches, CATEGORIES } from "./match.js";
+import { evaluate, compareMatches, CATEGORIES, levelOf } from "./match.js";
 import { daysUntil, programStatus, stageById } from "./filters.js";
 
 export const SECTIONS = {
@@ -40,7 +40,10 @@ export function fingerprint(opp, match, target) {
 export function materialChanges(before, after, prefs = {}) {
   if (!before) return [];
   const out = [];
-  if (before.function !== after.function) {
+  // Enrichment filling in an unknown value is not a change to the posting, unless the new value is one this target
+  // chose. A known value that changes is (a correction, or the employer edited the ad).
+  const roleChosen = ["core", "ok"].includes(levelOf({ roles: {}, ...prefs }, after.function));
+  if (before.function !== after.function && (before.function !== "unknown" || roleChosen)) {
     out.push({ code: "role", text: `Role classification changed (${before.function.replaceAll("_", " ")} → ${after.function.replaceAll("_", " ")})` });
   }
   if (before.countries !== after.countries || before.city !== after.city) {
@@ -49,7 +52,10 @@ export function materialChanges(before, after, prefs = {}) {
       || (prefs.cities || []).some((c) => after.city && after.city.toLowerCase().includes(c.toLowerCase()));
     if (preferred) out.push({ code: "location", text: `Location changed to ${after.city || after.countries}, a place you prefer` });
   }
-  if (before.type !== after.type || before.year !== after.year) {
+  const types = prefs.types || [], years = prefs.years || [];
+  const typeMatters = types.length && before.type !== after.type && (before.type !== "unknown" || types.includes(after.type));
+  const yearMatters = years.length && before.year !== after.year && (before.year !== null || years.includes(after.year));
+  if (typeMatters || yearMatters) {
     out.push({ code: "timing", text: `Intake changed (${before.type}${before.year ? " " + before.year : ""} → ${after.type}${after.year ? " " + after.year : ""})` });
   }
   if (after.reopened > before.reopened) out.push({ code: "reopened", text: "Applications reopened" });
@@ -60,6 +66,12 @@ export function materialChanges(before, after, prefs = {}) {
     out.push({ code: "preferences", text: "A stronger match after your preference changes" });
   }
   return out;
+}
+
+// The old global "not interested" list counts as dismissed in every target only for entries made before the first
+// target existed; later ones belong to All opportunities alone. cutoff: the first target's creation time.
+export function legacyIds(dismissedMap, cutoff) {
+  return new Set(Object.entries(dismissedMap || {}).filter(([, at]) => !cutoff || String(at) < cutoff).map(([id]) => id));
 }
 
 const processedStage = (entry) => { const s = entry && stageById(entry.stage); return !!s && (s.rank >= 1 || !!s.closed); };

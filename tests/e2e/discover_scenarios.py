@@ -192,6 +192,25 @@ with sync_playwright() as p:
     check("applied leaves the queue", app_id not in rows(pg))
     tab(pg, "Saved & applied"); check("applied listed under Saved & applied", app_id in rows(pg))
 
+    # review fixes: applied selects the next row; letters in a <select> do not act; table dismissals stay out of targets
+    tab(pg, "Top matches")
+    ids_now = rows(pg)
+    pg.click(f'.feed-row[data-id="{ids_now[1]}"]'); pg.wait_for_timeout(100)
+    pg.click('#detail button:has-text("Mark applied")'); pg.wait_for_timeout(400)
+    check("applied moves selection to the next posting", pg.locator(".feed-row.selected").get_attribute("data-id") == ids_now[2])
+    sel_id = pg.locator(".feed-row.selected").get_attribute("data-id")
+    pg.focus("#detail .role-fix select"); pg.keyboard.press("a"); pg.wait_for_timeout(250)
+    check("letters typed in the correction menu do not act", sel_id not in json.loads(pg.evaluate("localStorage.getItem('fintrack.tracker.v1')")))
+    pg.click('.mode-switch button:has-text("All opportunities")'); pg.wait_for_timeout(300)
+    pg.click(f'.grid tbody tr[data-id="{sel_id}"]'); pg.keyboard.press("x"); pg.wait_for_timeout(200)
+    pg.click('.mode-switch button:has-text("For you")'); pg.wait_for_timeout(300)
+    check("a table dismissal after targets exist stays out of For you", sel_id in rows(pg))
+    pg.click('button:has-text("Edit target")'); pg.wait_for_timeout(200)
+    pg.click(".target-menu > summary") if pg.locator(".target-menu").count() else None
+    pg.once("dialog", lambda d: d.accept())
+    pg.click('.form-actions button:has-text("Delete")'); pg.wait_for_timeout(400)
+    check("deleting a target from the editor shows the next one", pg.locator(".feed-row").count() > 0 and "Asset Management" in pg.inner_text("#view-title"))
+
     # --- K: every other view still works
     for v in ["programs", "firms", "outreach", "pipeline", "deadlines", "sources", "profile"]:
         pg.goto(f"{URL}#{v}"); pg.wait_for_timeout(500)

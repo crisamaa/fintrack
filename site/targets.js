@@ -214,9 +214,9 @@ export function createTargets({ storage = globalThis.localStorage, now = () => n
       return e;
     },
     // An optional reason, given after a dismissal without blocking it.
-    setReason(profile, opp, reason) {
+    setReason(profile, opp, reason, eventId = null) {
       const d = api.decision(profile, opp);
-      if (!d) return false;
+      if (!d || (eventId && d.event !== eventId)) return false;
       d.reason = reason;
       const e = doc.events.find((x) => x.id === d.event);
       if (e) e.reason = reason;

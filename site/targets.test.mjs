@@ -162,3 +162,12 @@ test("restored is a decision state, for undoing an old global dismissal in one t
   t.decide(a, "o", "restored");
   assert.equal(t.decision(a, "o").state, "restored");
 });
+
+test("a reason only attaches to the dismissal it was given for", () => {
+  const { t } = make();
+  const a = t.create({ name: "IB", prefs: ibPrefs });
+  const ev = t.decide(a, "o", "dismissed");
+  t.decide(a, "o", "saved");
+  assert.equal(t.setReason(a, "o", "wrong_field", ev.id), false);
+  assert.equal(t.decision(a, "o").reason, null);
+});

@@ -61,6 +61,9 @@ function candidates(target, rows, opps, fnOf) {
 
   for (const [fn, xs] of group(dismissed.filter((r) => ROLE_REASONS.has(r.reason)), (r) => fnOf(r.opp))) {
     if (!FUNCTIONS[fn] || !enough(xs) || ["low", "exclude"].includes(prefs.roles?.[fn])) continue;
+    // A target needs one chosen function: never propose demoting the last one.
+    const others = Object.entries(prefs.roles || {}).some(([f, l]) => f !== fn && (l === "core" || l === "ok"));
+    if (!others && !prefs.anyFinance) continue;
     const label = functionLabel(fn);
     out.push({ key: `role:${fn}:low`, kind: "role", value: fn, change: "low", evidence: xs.map((r) => r.opp), employers: firms(xs),
       text: `You dismissed ${xs.length} ${label} internships at ${firms(xs)} firms as outside your interests. Deprioritise ${label} in “${name}”?`,

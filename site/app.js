@@ -9,7 +9,7 @@ import { assess, OUTCOMES, suggestions, REGIONS } from "./eligibility.js";
 import { rank } from "./relevance.js";
 import { compose, mailto, DRAFT_KINDS } from "./outreach.js";
 import { createTargets, validatePrefs, prefsFromLegacy, TYPES, DISMISS_REASONS } from "./targets.js";
-import { buildFeed, fingerprint, SECTIONS } from "./feed.js";
+import { buildFeed, fingerprint, legacyIds, SECTIONS } from "./feed.js";
 import { detect, applySuggestion, behaviour, resolve as resolveSuggestion } from "./learn.js";
 import { FUNCTIONS, FAMILIES, CATEGORIES, LEVELS as ROLE_LEVELS, effectiveRole, functionLabel, emptyPrefs } from "./match.js";
 
@@ -722,6 +722,7 @@ const EMPTY_SECTION = {
 };
 const forYouActive = () => state.view === "discover" && state.discoverMode === "foryou" && !!targets.active() && !state.editing;
 let feedCache = null;
+let selectToken = 0;
 const feedItem = (id) => feedCache?.items.get(id) || null;
 const fnOf = (id) => effectiveRole(state.byId.get(id) || {}, targets.override(id)).function;
 
@@ -729,11 +730,16 @@ function computeFeed() {
   const t = targets.active();
   if (!t || !state.data) return (feedCache = null);
   if (!state.visit[t.id]) state.visit[t.id] = targets.visit(t.id);
+  // Lets deferred and rejected suggestions come back once their cooldown ends; quiet, since we are mid-render.
+  const wasBatching = state.batching;
+  state.batching = true;
+  try { refreshSuggestions(t); } finally { state.batching = wasBatching; }
+  const firstTarget = [...targets.list(), ...targets.list({ archived: true })].map((p) => p.created).sort()[0] || null;
   const beh = behaviour(targets.events(t.id), targets.decisions(t.id), fnOf);
   const programs = [...state.programs.values()].map((p) => ({ ...p, employer_name: state.employers.get(p.employer_id)?.name }));
   const t0 = performance.now();
   feedCache = buildFeed({ opps: state.roles, target: t, today: state.today, visit: state.visit[t.id],
-    decisions: targets.decisions(t.id), legacyDismissed: new Set(Object.keys(dismissed.all())),
+    decisions: targets.decisions(t.id), legacyDismissed: legacyIds(dismissed.all(), firstTarget),
     trackerEntry: (id) => tracker.get(id), programs,
     ctxFor: (o) => ({ employers: state.employers, eligibility: o.eligibility || "insufficient", override: targets.override(o.id),
       behaviour: beh, countryName, typeName, languageName }) });
@@ -765,7 +771,7 @@ function stateTag(x) {
 function feedRow(x) {
   const r = x.opp, m = x.match;
   const intake = `${r.season && r.season !== "unknown" ? SEASONS[r.season] : ""}${r.year ? " " + r.year : ""}`.trim();
-  const when = x.days !== null && x.days >= 0 ? daysCell(r.closes) : h("span", { class: "days none" }, intake || "rolling");
+  const when = x.days !== null && x.days >= 0 ? daysCell(r.closes) : h("span", { class: "days none", title: "No closing date stated" }, intake || "no date");
   const isFresh = x.newSinceVisit || (isNew(r) && state.section !== "new");
   return h("li", {
     class: ["feed-row", r.id === state.focusId ? "focused" : "", r.id === state.detailId ? "selected" : ""].join(" ").trim(),
@@ -847,8 +853,9 @@ function renderForYou(view) {
     : state.detailId && state.rowIds.includes(state.detailId) ? state.detailId : null;
   state.pendingSelect = null;
   const wide = window.matchMedia("(min-width: 901px)").matches;
-  if (want) requestAnimationFrame(() => { if (state.detailId !== want) openDetail(want, { focus: false }); focusRow(want); });
-  else if (wide && state.rowIds.length) requestAnimationFrame(() => { focusRow(state.rowIds[0]); openDetail(state.rowIds[0], { focus: false }); });
+  const token = ++selectToken; // only the latest render's selection applies
+  if (want) requestAnimationFrame(() => { if (token !== selectToken) return; if (state.detailId !== want) openDetail(want, { focus: false }); });
+  else if (wide && state.rowIds.length) requestAnimationFrame(() => { if (token !== selectToken) return; focusRow(state.rowIds[0]); openDetail(state.rowIds[0], { focus: false }); });
   else if (state.detailId && !feedItem(state.detailId)) closeDetail();
 }
 
@@ -862,6 +869,16 @@ function setDiscoverMode(mode) {
 }
 
 // --- decisions -----------------------------------------------------------------------------------------------
+// One decision writes to two stores (target and pipeline); render once afterwards instead of once per write.
+function batch(fn) {
+  state.batching = true;
+  try { fn(); } finally {
+    state.batching = false;
+    derive(); renderToolbar(); renderView();
+    if (state.focusId) focusRow(state.focusId);
+    renderDetail();
+  }
+}
 let undoTimer;
 function showUndo(text, onUndo, { reasons = null } = {}) {
   const bar = $("#undo");
@@ -886,16 +903,20 @@ function neighbour(id) {
   return i < 0 ? null : state.rowIds[i + 1] || state.rowIds[i - 1] || null;
 }
 function otherTargetSaved(id, except) {
-  return targets.list().some((p) => p.id !== except && targets.decision(p.id, id)?.state === "saved");
+  return [...targets.list(), ...targets.list({ archived: true })].some((p) => p.id !== except && targets.decision(p.id, id)?.state === "saved");
 }
-function feedSave(id) {
+function feedSave(id) { batch(() => feedSaveNow(id)); }
+function feedSaveNow(id) {
   const t = targets.active(), x = feedItem(id), role = resolve(id);
   if (!t || !x || !role) return;
   if (x.state === "saved") {
     targets.decide(t.id, id, null);
     const e = tracker.get(id);
-    if (e && e.stage === "saved" && e.origin_target === t.id && !otherTargetSaved(id, t.id)) tracker.setStage(role, null);
-    toast("No longer saved in this target");
+    const yours = e && (e.notes || e.next_step || e.next_date);
+    if (e && e.stage === "saved" && e.origin_target === t.id && !otherTargetSaved(id, t.id) && !yours) {
+      tracker.setStage(role, null);
+      toast("No longer saved — removed from Pipeline");
+    } else toast(e ? "No longer saved in this target — still in Pipeline" : "No longer saved in this target");
     return;
   }
   targets.decide(t.id, id, "saved", { fp: fingerprint(x.opp, x.match, t) });
@@ -903,17 +924,19 @@ function feedSave(id) {
   refreshSuggestions(t);
   toast(`Saved · ${role.firm_name} — also shortlisted in Pipeline`);
 }
-function feedDismiss(id) {
+function feedDismiss(id) { batch(() => feedDismissNow(id)); }
+function feedDismissNow(id) {
   const t = targets.active(), x = feedItem(id);
   if (!t || !x) return;
-  if (x.state === "dismissed" && !x.resurfaced) return feedRestore(id);
+  if (x.state === "dismissed" && !x.resurfaced) return feedRestoreNow(id);
   state.pendingSelect = neighbour(id);
   const ev = targets.decide(t.id, id, "dismissed", { fp: fingerprint(x.opp, x.match, t) });
   refreshSuggestions(t);
   showUndo(`Dismissed from “${t.name}” — still in All opportunities`, () => { state.pendingSelect = id; targets.undo(t.id, ev.id); refreshSuggestions(t); },
-    { reasons: (code) => { targets.setReason(t.id, id, code); refreshSuggestions(t); } });
+    { reasons: (code) => { targets.setReason(t.id, id, code, ev.id); refreshSuggestions(t); } });
 }
-function feedRestore(id) {
+function feedRestore(id) { batch(() => feedRestoreNow(id)); }
+function feedRestoreNow(id) {
   const t = targets.active(), x = feedItem(id);
   if (!t || !x) return;
   state.pendingSelect = id;
@@ -921,13 +944,15 @@ function feedRestore(id) {
   refreshSuggestions(t);
   toast(`Back in “${t.name}”`);
 }
-function feedLater(id) {
+function feedLater(id) { batch(() => feedLaterNow(id)); }
+function feedLaterNow(id) {
   const t = targets.active(), x = feedItem(id);
   if (!t || !x) return;
   targets.decide(t.id, id, x.state === "later" ? null : "later");
   toast(x.state === "later" ? "Back in the queue" : "Marked to review later — kept, listed after the rest");
 }
-function feedApplied(id) {
+function feedApplied(id) { batch(() => feedAppliedNow(id)); }
+function feedAppliedNow(id) {
   const t = targets.active(), role = resolve(id);
   if (!t || !role) return;
   const e = tracker.get(id);
@@ -1232,6 +1257,7 @@ function renderTargetEditor(view) {
   if (!d) { state.editing = null; renderView(); return; }
   const editing = d.mode === "edit";
   const p = editing ? targets.get(d.id) : null;
+  if (editing && !p) { state.editing = null; state.draft = null; renderView(); return; } // deleted elsewhere
   const first = !targets.list().length;
   setMeta([]);
   $("#view-meta").textContent = first ? "Set up your first career target to get a personalised feed. All opportunities stays available meanwhile."
@@ -1272,7 +1298,7 @@ function renderTargetEditor(view) {
         h("button", { class: "btn ghost", type: "button", onclick: () => { targets.archive(d.id); toast(`Archived “${p.name}” — restore it from the target menu`); cancel(); } }, "Archive"),
         h("button", { class: "btn ghost", type: "button", onclick: () => {
           if (!confirm(`Delete “${p.name}”? Its preferences, decisions and history are removed from this browser. Applications in Pipeline stay.`)) return;
-          targets.remove(d.id); toast("Target deleted"); cancel(); } }, "Delete")]
+          state.editing = null; state.draft = null; targets.remove(d.id); toast("Target deleted"); renderToolbar(); renderView(); } }, "Delete")]
         : [d.step > 1 ? h("button", { class: "btn ghost", type: "button", onclick: () => go(d.step - 1) }, "Back") : null,
           d.step < 4 ? h("button", { class: "btn primary", type: "button", onclick: () => go(d.step + 1) }, "Next") : h("button", { class: "btn primary", type: "button", onclick: finish }, "Activate target"),
           !first ? h("button", { class: "btn ghost", type: "button", onclick: cancel }, "Cancel") : null,
@@ -2003,7 +2029,7 @@ function moveFocus(delta) {
 
 function onKey(ev) {
   const tag = ev.target.tagName;
-  const typing = tag === "INPUT" || tag === "TEXTAREA" || ev.target.isContentEditable;
+  const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || ev.target.isContentEditable;
   if (ev.key === "Escape") {
     if ($("#shortcuts").open) return;
     if (typing && ev.target.id === "search" && ev.target.value) { ev.target.value = ""; onSearch(""); return; }
@@ -2387,7 +2413,7 @@ function init() {
   dismissed.onChange(rederive);
   // Visits and the onboarding draft change nothing on screen; everything else re-ranks the feed.
   targets.onChange((kind) => {
-    if (!state.data || kind === "visit" || kind === "draft") return;
+    if (!state.data || state.batching || kind === "visit" || kind === "draft") return;
     renderToolbar();
     renderView();
     if (state.focusId) focusRow(state.focusId);
@@ -2395,7 +2421,7 @@ function init() {
   });
   crm.onChange(() => { if (!state.data) return; renderView(); renderCounts(); });
   tracker.onChange((kind) => {
-    if (!state.data) return;
+    if (!state.data || state.batching) return;
     derive();
     renderView();
     if (state.focusId) focusRow(state.focusId);

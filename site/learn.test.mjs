@@ -138,3 +138,10 @@ test("applications count as positive signals too", () => {
   for (const id of ["r1", "r2", "r3"]) t.log(ib, id, "applied");
   assert.ok(run(t, ib).find((x) => x.key === "role:risk:ok"));
 });
+
+test("never suggests deprioritising a target's only chosen function", () => {
+  const t = store();
+  const id = t.create({ name: "Risk", prefs: { roles: { risk: "core" } } });
+  for (const o of ["r1", "r2", "r3"]) t.decide(id, o, "dismissed", { reason: "wrong_field" });
+  assert.equal(run(t, id).length, 0);
+});

@@ -217,3 +217,34 @@ def test_site_taxonomy_copy_matches_the_tracker():
     block = js[js.index("export const FUNCTIONS"):js.index("};", js.index("export const FUNCTIONS"))]
     found = dict(re.findall(r"(\w+): \{ label: \"[^\"]+\", family: \"(\w+)\"", block))
     assert found == {k: v["family"] for k, v in roles.FUNCTIONS.items()}
+
+
+@pytest.mark.parametrize("title, function", [
+    # A coverage sector after a dash names the industry covered, not the work.
+    ("Investment Banking Summer Analyst - Technology, Media & Telecom", "investment_banking"),
+    ("M&A Intern - Technology Sector", "m_and_a"),
+    ("Private Equity Intern - Healthcare & Technology", "private_equity"),
+    ("Equity Research Intern - Technology", "research"),
+    ("Venture Capital Intern - AI & Software", "venture_capital"),
+    ("Private Banking Intern - Client Relationship Management", "private_banking"),
+    ("Quantitative Analytics Associate Off Cycle Internship 2027 Paris", "quant"),
+    ("Quantitative Intern - Portfolio Engineering and Analytics", "quant"),
+    ("Quantitative Research Intern – AI for Investment Research", "quant"),
+    ("Fixed Income Sales Summer Analyst", "sales_trading"),
+    ("Equity Sales Intern", "sales_trading"),
+    # ...while a person's job stays what it is.
+    ("Internship – Software Engineer – Global Markets Services AI Project", "technology"),
+    ("Werkstudent Portfolio Management Systems – Product Management (m/w/d)", "product"),
+])
+def test_coverage_suffixes_and_desk_sales(title, function):
+    assert roles.classify(title)["function"] == function
+
+
+def test_a_source_without_department_keeps_the_stored_one(ctx):
+    employer(ctx)
+    source(ctx)
+    _ingest(ctx, posting(1, title="Summer Internship 2027", structured={"department": "Leveraged Finance"}))
+    o = opp_for(ctx, 1)
+    later(ctx, hours=8)
+    _ingest(ctx, posting(1, title="Summer Internship 2027", description="Changed text so the posting is re-read."))
+    assert _role(ctx, o["id"])["function"] == "dcm"

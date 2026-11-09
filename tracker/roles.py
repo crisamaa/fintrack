@@ -22,7 +22,7 @@ from datetime import datetime
 from tracker.db import dumps, iso, loads, one
 from tracker.taxonomy import fold
 
-VERSION = "roles-1"
+VERSION = "roles-2"
 
 FAMILIES: dict[str, str] = {
     "advisory": "Advisory & capital markets",
@@ -106,6 +106,8 @@ _RULES: list[tuple[str, str, int, str]] = [
      r"\bdistribution\b|vertrieb(?<!filialvertrieb)",
      "sales", 87, "high"),
     (r"\besg\b|sustainab|nature-based", "sustainability", 86, "high"),
+    # Desk sales is markets work, unlike distribution or business-development sales.
+    (r"(equity|equities|fixed\s+income|\bfx\b|rates|credit|structured(\s+\w+)?)\s+sales", "sales_trading", 88, "high"),
     (r"founder\s+associate|business\s+management|project\s+manag|program\s+manag|strateg", "strategy", 60, "high"),
     # finance teams whose title says exactly what they do
     (r"fund\s+finance|controlling|fp\s?&\s?a|financial\s+planning|consolidation|accounting|product\s+control|"
@@ -125,7 +127,7 @@ _RULES: list[tuple[str, str, int, str]] = [
     (r"private\s+(credit|debt)|\bcredit\b(?!\s+research)|kredit|lending|credito", "credit", 76, "high"),
     (r"sales\s*(&|and|,)\s*trading|\btrading\b|\btrader\b|structuring|haendler|global\s+markets", "sales_trading", 79,
      "high"),
-    (r"quantitativ|\bquant\b", "quant", 80, "high"),
+    (r"quantitativ|\bquant\b", "quant", 89, "high"),
     (r"portfolio\s+manag|asset\s+manag|fund\s+manag|gestion\s+d.actifs|sustainable\s+investing|"
      r"quantitative\s+investing", "asset_management", 76, "high"),
     (r"wealth\s+manag|vermoegensverwaltung|gestion\s+de\s+fortune|assistant(\(e\)|e)?\s+de\s+gestion|"
@@ -185,10 +187,28 @@ def _from(hits: list) -> tuple[str, list[str], str, str] | None:
     return primary, ordered, conf, ev
 
 
+# After a dash or bracket, titles often name the industry covered ("M&A Intern - Technology") or the client group
+# ("Private Banking - Client Relationship Management"). When the head of the title names a finance function, such
+# words in the tail are coverage, not the work.
+_TAIL = re.compile(r"\s[-–|]\s|\(")
+_COVERAGE_FUNCTIONS = {"technology", "data", "sales"}
+
+
+def _title_hits(title: str) -> list:
+    hits = _matches(title, original=title)
+    m = _TAIL.search(title)
+    if not m:
+        return hits
+    head = len(fold(title[:m.start()]))
+    if any(h[1] < head and FUNCTIONS[h[2]]["finance"] and h[2] not in GENERIC for h in hits):
+        hits = [h for h in hits if not (h[1] >= head and h[2] in _COVERAGE_FUNCTIONS)]
+    return hits
+
+
 def classify(title: str, *, department: str = "", description: str = "") -> dict:
     """The role function of one posting. Pure; see the module docstring for the layers."""
     title = title or ""
-    found = _from(_matches(title, original=title))
+    found = _from(_title_hits(title))
     if found and found[0] not in GENERIC:
         primary, ordered, conf, ev = found
         return _result(primary, ordered, conf, "title", ev)

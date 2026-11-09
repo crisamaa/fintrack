@@ -152,7 +152,8 @@ test("materialChanges names reopenings, intake and eligibility improvements, and
   assert.deepEqual(materialChanges(a, { ...a }, IB.prefs), []);
   const codes = (b) => materialChanges(a, b, IB.prefs).map((c) => c.code);
   assert.deepEqual(codes({ ...a, reopened: 1 }), ["reopened"]);
-  assert.deepEqual(codes({ ...a, year: 2028 }), ["timing"]);
+  assert.deepEqual(codes({ ...a, year: 2028 }), [], "the target sets no intake years");
+  assert.deepEqual(materialChanges(a, { ...a, year: 2028 }, { ...IB.prefs, years: [2027] }).map((c) => c.code), ["timing"]);
   assert.deepEqual(codes({ ...a, eligibility: "eligible" }), ["eligibility"]);
   assert.deepEqual(codes({ ...a, eligibility: "ineligible" }), []);
   assert.deepEqual(codes({ ...a, category: "top", prefsVersion: 2 }), []);
@@ -167,4 +168,22 @@ test("restoring an old global dismissal in one target keeps it dismissed in the 
   assert.ok(ids(restored.sections.top).includes("mna"));
   assert.equal(restored.sections.top.find((x) => x.opp.id === "mna").state, null);
   assert.ok(!ids(feed(BASE, IB, { legacyDismissed }).sections.top).includes("mna"));
+});
+
+test("enrichment filling unknown fields is not a material change", () => {
+  const unknownFp = { function: "unknown", countries: "CH", city: "Zurich", type: "unknown", year: null, reopened: 0, eligibility: "eligible", category: "review", prefsVersion: 1 };
+  const codes = (b, prefs = IB.prefs) => materialChanges(unknownFp, { ...unknownFp, ...b }, prefs).map((c) => c.code);
+  assert.deepEqual(codes({ function: "technology", category: "low" }), []);
+  assert.deepEqual(codes({ function: "m_and_a", category: "top" }), ["role"], "unknown -> a chosen function matters");
+  assert.deepEqual(codes({ type: "summer", year: 2027 }), [], "the target sets no formats or years");
+  const withTypes = { ...IB.prefs, types: ["summer"] };
+  assert.deepEqual(codes({ type: "summer" }, withTypes), ["timing"]);
+  assert.deepEqual(codes({ type: "insight" }, withTypes), []);
+});
+
+test("only dismissals from before the first target are legacy", async () => {
+  const { legacyIds } = await import("./feed.js");
+  const all = { a: "2026-11-01T10:00:00Z", b: "2026-11-10T10:00:00Z" };
+  assert.deepEqual([...legacyIds(all, "2026-11-09T09:00:00Z")], ["a"]);
+  assert.deepEqual([...legacyIds(all, null)].sort(), ["a", "b"]);
 });
