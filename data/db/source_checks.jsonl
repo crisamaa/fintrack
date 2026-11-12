@@ -2039,3 +2039,74 @@
 {"at":"2026-11-12T07:53:44Z","duration_ms":1679,"error":null,"http_status":200,"id":2039,"new_postings":null,"outcome":"deferred","postings":null,"run_id":25,"source_id":"page:c652e85471"}
 {"at":"2026-11-12T07:53:44Z","duration_ms":1656,"error":null,"http_status":200,"id":2040,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":25,"source_id":"page:ec811dc7f6"}
 {"at":"2026-11-12T07:53:44Z","duration_ms":2048,"error":null,"http_status":200,"id":2041,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":25,"source_id":"page:eda971de18"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2134,"error":null,"http_status":200,"id":2042,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:3a5b266700"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1621,"error":null,"http_status":200,"id":2043,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:0e53f54aa2"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2207,"error":null,"http_status":200,"id":2044,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:7611a397e5"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2196,"error":null,"http_status":200,"id":2045,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:c51353f8fd"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1238,"error":"blocked: GET https://www.goldmansachs.com/careers/: HTTP 403","http_status":403,"id":2046,"new_postings":null,"outcome":"blocked","postings":null,"run_id":26,"source_id":"page:12f2041007"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2486,"error":"unavailable: GET https://careers.payfit.com/: HTTP 502","http_status":502,"id":2047,"new_postings":null,"outcome":"unavailable","postings":null,"run_id":26,"source_id":"page:bcd85bc48f"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":19469,"error":null,"http_status":200,"id":2048,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:b7f261e467"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2562,"error":null,"http_status":200,"id":2049,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:f6c00aa466"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":9273,"error":null,"http_status":200,"id":2050,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:a957341783"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1707,"error":null,"http_status":304,"id":2051,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:23eb4c4d90"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2016,"error":null,"http_status":200,"id":2052,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:34ff63914d"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2110,"error":null,"http_status":null,"id":2053,"new_postings":0,"outcome":"empty","postings":0,"run_id":26,"source_id":"personio:yapeal-ag@de"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2128,"error":null,"http_status":200,"id":2054,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:f502cb9c32"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2041,"error":null,"http_status":200,"id":2055,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:d97a7dbd3c"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2450,"error":null,"http_status":200,"id":2056,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:c6a3060927"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":10111,"error":null,"http_status":null,"id":2057,"new_postings":0,"outcome":"empty","postings":0,"run_id":26,"source_id":"workday:fil/001"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1617,"error":null,"http_status":200,"id":2058,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:dd13182e41"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1256,"error":null,"http_status":null,"id":2059,"new_postings":0,"outcome":"ok","postings":6,"run_id":26,"source_id":"ashby:alan"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2943,"error":null,"http_status":200,"id":2060,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:04c8f069b0"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2996,"error":null,"http_status":200,"id":2061,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:948c7b3b8a"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2523,"error":null,"http_status":200,"id":2062,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:7638deeade"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2241,"error":"blocked: GET https://www.hypovereinsbank.de/hvb/ueber-uns/jobs-karriere: HTTP 403","http_status":403,"id":2063,"new_postings":null,"outcome":"blocked","postings":null,"run_id":26,"source_id":"page:367dfd8fb0"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":45365,"error":null,"http_status":null,"id":2064,"new_postings":0,"outcome":"ok","postings":13,"run_id":26,"source_id":"workday:juliusbaer/External"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":140,"error":null,"http_status":null,"id":2065,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"ashby:pliant"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1108,"error":null,"http_status":null,"id":2066,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"ashby:mollie"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1167,"error":null,"http_status":null,"id":2067,"new_postings":0,"outcome":"ok","postings":7,"run_id":26,"source_id":"greenhouse:lincolninternational"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":113420,"error":"pagination: workday:santander/SantanderCareers: more than 50 pages","http_status":null,"id":2068,"new_postings":null,"outcome":"pagination","postings":null,"run_id":26,"source_id":"workday:santander/SantanderCareers"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":6900,"error":null,"http_status":null,"id":2069,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"workday:athene/Apollo_Careers"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":124,"error":null,"http_status":null,"id":2070,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"greenhouse:moonfare"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1628,"error":null,"http_status":200,"id":2071,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:ea62125eda"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":42932,"error":"format_changed: workday:barclays/External_Career_Site_Barclays: unexpected response shape (KeyError('title'))","http_status":null,"id":2072,"new_postings":null,"outcome":"format_changed","postings":null,"run_id":26,"source_id":"workday:barclays/External_Career_Site_Barclays"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":3416,"error":null,"http_status":200,"id":2073,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:f382e2a1ee"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":117,"error":null,"http_status":null,"id":2074,"new_postings":0,"outcome":"ok","postings":3,"run_id":26,"source_id":"greenhouse:bitpanda"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":125,"error":null,"http_status":null,"id":2075,"new_postings":0,"outcome":"ok","postings":2,"run_id":26,"source_id":"ashby:ledger"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1078,"error":null,"http_status":null,"id":2076,"new_postings":0,"outcome":"ok","postings":2,"run_id":26,"source_id":"greenhouse:sumup"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1288,"error":"blocked: GET https://www.partnersgroup.com/en/careers/welcome: HTTP 403","http_status":403,"id":2077,"new_postings":null,"outcome":"blocked","postings":null,"run_id":26,"source_id":"page:7fb1b4694d"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":36,"error":null,"http_status":null,"id":2078,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"ashby:billie"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2209,"error":null,"http_status":200,"id":2079,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:6c06e6b9a4"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1898,"error":null,"http_status":200,"id":2080,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:8ffec26d16"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":82093,"error":null,"http_status":null,"id":2081,"new_postings":0,"outcome":"ok","postings":56,"run_id":26,"source_id":"workday:ardian/ArdianCareers"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2119,"error":null,"http_status":304,"id":2082,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:cf6b5bcbf5"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":323,"error":null,"http_status":null,"id":2083,"new_postings":0,"outcome":"empty","postings":0,"run_id":26,"source_id":"ashby:pleo"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2019,"error":null,"http_status":null,"id":2084,"new_postings":0,"outcome":"ok","postings":4,"run_id":26,"source_id":"personio:auxmoney-gmbh@de"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":116,"error":null,"http_status":null,"id":2085,"new_postings":0,"outcome":"ok","postings":3,"run_id":26,"source_id":"greenhouse:raisin"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":41066,"error":null,"http_status":null,"id":2086,"new_postings":0,"outcome":"ok","postings":14,"run_id":26,"source_id":"workday:invesco/IVZ"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":9565,"error":null,"http_status":null,"id":2087,"new_postings":0,"outcome":"ok","postings":5,"run_id":26,"source_id":"workday:tritonpartners/External"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":87,"error":null,"http_status":null,"id":2088,"new_postings":0,"outcome":"ok","postings":3,"run_id":26,"source_id":"greenhouse:flowtraders"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1065,"error":null,"http_status":null,"id":2089,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"greenhouse:feedzai"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":154,"error":null,"http_status":null,"id":2090,"new_postings":0,"outcome":"ok","postings":3,"run_id":26,"source_id":"ashby:qonto"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1965,"error":null,"http_status":200,"id":2091,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:2a13a0622b"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2457,"error":null,"http_status":null,"id":2092,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"personio:flossbach-von-storch-ag@de"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2933,"error":null,"http_status":304,"id":2093,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:617898d44e"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":9163,"error":null,"http_status":null,"id":2094,"new_postings":0,"outcome":"ok","postings":1,"run_id":26,"source_id":"workday:saxobank/CareeratSaxoBank"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":42523,"error":null,"http_status":null,"id":2095,"new_postings":0,"outcome":"ok","postings":12,"run_id":26,"source_id":"workday:blackrock/BlackRock_Professional"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":3309,"error":null,"http_status":200,"id":2096,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:2620893d2c"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":162,"error":null,"http_status":null,"id":2097,"new_postings":0,"outcome":"empty","postings":0,"run_id":26,"source_id":"greenhouse:adyen"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":21489,"error":null,"http_status":null,"id":2098,"new_postings":0,"outcome":"ok","postings":9,"run_id":26,"source_id":"workday:hl/Campus"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":26549,"error":null,"http_status":null,"id":2099,"new_postings":0,"outcome":"ok","postings":13,"run_id":26,"source_id":"workday:vontobel/Vontobel_External_Career"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":65,"error":null,"http_status":null,"id":2100,"new_postings":0,"outcome":"ok","postings":8,"run_id":26,"source_id":"ashby:upvest"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2034,"error":null,"http_status":200,"id":2101,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:faee45af28"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":81,"error":null,"http_status":null,"id":2102,"new_postings":0,"outcome":"ok","postings":2,"run_id":26,"source_id":"greenhouse:scalapaysrl"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":54583,"error":null,"http_status":null,"id":2103,"new_postings":0,"outcome":"ok","postings":30,"run_id":26,"source_id":"workday:lombardodier/Lombard_Odier_Careers"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2423,"error":null,"http_status":200,"id":2104,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:19ce2a3c85"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":313,"error":null,"http_status":null,"id":2105,"new_postings":0,"outcome":"ok","postings":9,"run_id":26,"source_id":"greenhouse:stepstone"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":4305,"error":null,"http_status":200,"id":2106,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:a45788efe6"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2075,"error":null,"http_status":200,"id":2107,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:86e10f964e"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2285,"error":null,"http_status":200,"id":2108,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:7ae2a613ea"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":1998,"error":null,"http_status":200,"id":2109,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:2552ae4a71"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":7891,"error":null,"http_status":200,"id":2110,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:873a52d348"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2974,"error":null,"http_status":304,"id":2111,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":26,"source_id":"page:2d15f7666b"}
+{"at":"2026-11-12T17:17:33Z","duration_ms":2452,"error":null,"http_status":200,"id":2112,"new_postings":null,"outcome":"deferred","postings":null,"run_id":26,"source_id":"page:75720760c4"}
