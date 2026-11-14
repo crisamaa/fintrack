@@ -2452,3 +2452,117 @@
 {"at":"2026-11-14T01:10:19Z","duration_ms":124,"error":"unavailable: GET https://hl.wd1.myworkdayjobs.com/wday/cxs/hl/Corporate/jobs: HTTP 521","http_status":521,"id":2452,"new_postings":null,"outcome":"unavailable","postings":null,"run_id":30,"source_id":"workday:hl/Corporate"}
 {"at":"2026-11-14T01:10:19Z","duration_ms":2191,"error":null,"http_status":200,"id":2453,"new_postings":null,"outcome":"deferred","postings":null,"run_id":30,"source_id":"page:cad26780e1"}
 {"at":"2026-11-14T01:10:19Z","duration_ms":1404,"error":null,"http_status":200,"id":2454,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":30,"source_id":"page:47315eb3b6"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2094,"error":null,"http_status":200,"id":2455,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:e59f1d0c68"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1245,"error":null,"http_status":200,"id":2456,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:d655cbec65"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2505,"error":null,"http_status":200,"id":2457,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:f59cced046"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1273,"error":null,"http_status":304,"id":2458,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:9ce4354fb7"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1162,"error":null,"http_status":304,"id":2459,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:c176e6647f"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1176,"error":null,"http_status":200,"id":2460,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:e43ebacbe7"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1796,"error":null,"http_status":200,"id":2461,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:9f710db5d7"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":9330,"error":null,"http_status":200,"id":2462,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:53e6dc4bbc"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1536,"error":null,"http_status":200,"id":2463,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:f722a37392"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1677,"error":null,"http_status":200,"id":2464,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:f8d7477dff"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1344,"error":null,"http_status":304,"id":2465,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:f062361092"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1822,"error":null,"http_status":200,"id":2466,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:0b740e6e14"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1523,"error":null,"http_status":200,"id":2467,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:d7dfdeedf8"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1493,"error":null,"http_status":200,"id":2468,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:16bf98dac9"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1384,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2469,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:blackstone/Blackstone_Careers"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2145,"error":null,"http_status":200,"id":2470,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:4fda155ade"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2776,"error":null,"http_status":200,"id":2471,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:34ed4ce34a"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2015,"error":null,"http_status":200,"id":2472,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:d574b4e551"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1757,"error":null,"http_status":200,"id":2473,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:18fd8c21b5"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1111,"error":null,"http_status":304,"id":2474,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:ac932a1253"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1186,"error":null,"http_status":304,"id":2475,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:89cad756d1"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1315,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2476,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:harbourvest/HVP"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":6099,"error":null,"http_status":304,"id":2477,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:58c0e9187a"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2051,"error":null,"http_status":200,"id":2478,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:733ccc3e5a"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2804,"error":null,"http_status":200,"id":2479,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:bf997f06d1"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1537,"error":null,"http_status":200,"id":2480,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:7f46550259"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1510,"error":null,"http_status":200,"id":2481,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:ffc1ed443b"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1602,"error":null,"http_status":200,"id":2482,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:c6a2c7deb7"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1617,"error":null,"http_status":200,"id":2483,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:d59125ceaa"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":13528,"error":null,"http_status":200,"id":2484,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:c74c540b69"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1314,"error":null,"http_status":200,"id":2485,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:538d5e2a54"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2001,"error":null,"http_status":200,"id":2486,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:10dec9f964"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2923,"error":null,"http_status":200,"id":2487,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:7d62e861c6"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1888,"error":null,"http_status":304,"id":2488,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:55859e91fa"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2407,"error":null,"http_status":200,"id":2489,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:d6cb271264"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1161,"error":null,"http_status":304,"id":2490,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:73517be072"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2317,"error":null,"http_status":200,"id":2491,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:06d9cb840e"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2367,"error":null,"http_status":200,"id":2492,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:5c6d63da18"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1153,"error":null,"http_status":null,"id":2493,"new_postings":0,"outcome":"ok","postings":6,"run_id":31,"source_id":"ashby:alan"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":4964,"error":null,"http_status":200,"id":2494,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:c5ce2738bf"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2928,"error":null,"http_status":200,"id":2495,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:024ef76f89"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2528,"error":null,"http_status":200,"id":2496,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:66ad719265"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1613,"error":null,"http_status":200,"id":2497,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:d887239fc3"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2405,"error":null,"http_status":200,"id":2498,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:5e110c8d52"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":3035,"error":null,"http_status":200,"id":2499,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:f6cda6a129"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1456,"error":null,"http_status":200,"id":2500,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:d769966261"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1830,"error":null,"http_status":304,"id":2501,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:b26be19195"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1155,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2502,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:ntrs/northerntrust"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1109,"error":null,"http_status":null,"id":2503,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"greenhouse:21shares"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1175,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2504,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:blackrock/BlackRock_Professional"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1150,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2505,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:hl/Campus"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1759,"error":null,"http_status":200,"id":2506,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:349c89ac93"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1301,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2507,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:athene/Apollo_Careers"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":75,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2508,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:hl/Corporate"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1643,"error":null,"http_status":200,"id":2509,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:1b2a990445"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":4066,"error":null,"http_status":200,"id":2510,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:26f8a75bcb"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1807,"error":null,"http_status":304,"id":2511,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:ecbe5e2d83"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1613,"error":null,"http_status":200,"id":2512,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:b62091d3a4"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1184,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2513,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:pjtpartners/Careers"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2089,"error":null,"http_status":200,"id":2514,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:cf5c66b603"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1196,"error":null,"http_status":200,"id":2515,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:9088c06319"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":47851,"error":null,"http_status":null,"id":2516,"new_postings":0,"outcome":"ok","postings":14,"run_id":31,"source_id":"workday:juliusbaer/External"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1840,"error":null,"http_status":200,"id":2517,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:5e3c84c287"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":30,"error":null,"http_status":null,"id":2518,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"ashby:billie"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1552,"error":null,"http_status":null,"id":2519,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"personio:flossbach-von-storch-ag@de"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":3314,"error":null,"http_status":null,"id":2520,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"workday:temenos/Temenoscareers"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":101411,"error":null,"http_status":null,"id":2521,"new_postings":0,"outcome":"ok","postings":42,"run_id":31,"source_id":"workday:barclays/External_Career_Site_Barclays"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":49,"error":null,"http_status":null,"id":2522,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"ashby:mollie"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":51433,"error":null,"http_status":null,"id":2523,"new_postings":0,"outcome":"ok","postings":32,"run_id":31,"source_id":"workday:lombardodier/Lombard_Odier_Careers"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1160,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2524,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:invesco/IVZ"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":132,"error":null,"http_status":null,"id":2525,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"greenhouse:generalatlantic"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1049,"error":null,"http_status":null,"id":2526,"new_postings":0,"outcome":"ok","postings":2,"run_id":31,"source_id":"greenhouse:raisin"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":34,"error":null,"http_status":null,"id":2527,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"ashby:wayflyer"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2561,"error":null,"http_status":200,"id":2528,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:be1c1acc6b"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1925,"error":null,"http_status":200,"id":2529,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:3b5c011d7c"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2193,"error":null,"http_status":200,"id":2530,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:1485545199"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1378,"error":null,"http_status":200,"id":2531,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:f6455bf54e"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1751,"error":null,"http_status":200,"id":2532,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:ef087f50a0"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":79,"error":null,"http_status":null,"id":2533,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"greenhouse:ledgy"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2012,"error":null,"http_status":200,"id":2534,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:10f25da3d1"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":3280,"error":null,"http_status":200,"id":2535,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:d3fc3a9095"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":8369,"error":null,"http_status":null,"id":2536,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"workday:saxobank/CareeratSaxoBank"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":187,"error":null,"http_status":null,"id":2537,"new_postings":0,"outcome":"ok","postings":2,"run_id":31,"source_id":"greenhouse:scalapaysrl"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1145,"error":null,"http_status":null,"id":2538,"new_postings":0,"outcome":"ok","postings":3,"run_id":31,"source_id":"greenhouse:flowtraders"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1049,"error":null,"http_status":null,"id":2539,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"greenhouse:feedzai"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1053,"error":null,"http_status":null,"id":2540,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"greenhouse:n26"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1065,"error":null,"http_status":null,"id":2541,"new_postings":0,"outcome":"ok","postings":8,"run_id":31,"source_id":"greenhouse:stepstone"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1020,"error":null,"http_status":null,"id":2542,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"greenhouse:moonfare"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":63,"error":null,"http_status":null,"id":2543,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"ashby:qonto"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":75295,"error":null,"http_status":null,"id":2544,"new_postings":0,"outcome":"ok","postings":55,"run_id":31,"source_id":"workday:ardian/ArdianCareers"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1837,"error":null,"http_status":null,"id":2545,"new_postings":0,"outcome":"ok","postings":4,"run_id":31,"source_id":"personio:auxmoney-gmbh@de"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":289,"error":null,"http_status":null,"id":2546,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"greenhouse:sumup"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":60,"error":null,"http_status":null,"id":2547,"new_postings":0,"outcome":"ok","postings":1,"run_id":31,"source_id":"ashby:pliant"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":967,"error":null,"http_status":null,"id":2548,"new_postings":0,"outcome":"ok","postings":7,"run_id":31,"source_id":"greenhouse:lincolninternational"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":49,"error":null,"http_status":null,"id":2549,"new_postings":0,"outcome":"ok","postings":2,"run_id":31,"source_id":"ashby:ledger"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":992,"error":null,"http_status":null,"id":2550,"new_postings":0,"outcome":"ok","postings":3,"run_id":31,"source_id":"greenhouse:bitpanda"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":34,"error":null,"http_status":null,"id":2551,"new_postings":0,"outcome":"ok","postings":9,"run_id":31,"source_id":"ashby:upvest"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":8562,"error":null,"http_status":null,"id":2552,"new_postings":0,"outcome":"ok","postings":5,"run_id":31,"source_id":"workday:tritonpartners/External"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":18454,"error":null,"http_status":null,"id":2553,"new_postings":0,"outcome":"ok","postings":10,"run_id":31,"source_id":"workday:vontobel/Vontobel_External_Career"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2250,"error":null,"http_status":200,"id":2554,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:e045b46549"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":133,"error":null,"http_status":null,"id":2555,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"greenhouse:optiver"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2411,"error":null,"http_status":200,"id":2556,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:eac65f9929"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1544,"error":null,"http_status":200,"id":2557,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:92124f58b0"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1573,"error":null,"http_status":200,"id":2558,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:b68e3b1826"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2269,"error":null,"http_status":200,"id":2559,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:6e6e3768d7"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":2274,"error":null,"http_status":200,"id":2560,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:20374db710"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":94,"error":"robots: https://community.workday.com/maintenance-page: disallowed by robots.txt","http_status":null,"id":2561,"new_postings":null,"outcome":"robots","postings":null,"run_id":31,"source_id":"workday:hl/Lateral"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1731,"error":null,"http_status":200,"id":2562,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:b7e2d24bec"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":32784,"error":"unavailable: browser render https://www.dnb.no/om-oss/jobb-og-karriere: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.dnb.no/om-oss/jobb-og-karriere\", waiting until \"networkidle\"\n","http_status":null,"id":2563,"new_postings":null,"outcome":"unavailable","postings":null,"run_id":31,"source_id":"page:7720a24941"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1882,"error":null,"http_status":200,"id":2564,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:45ffcbfe9e"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1934,"error":null,"http_status":200,"id":2565,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:b9fd36a98e"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1467,"error":null,"http_status":200,"id":2566,"new_postings":null,"outcome":"deferred","postings":null,"run_id":31,"source_id":"page:eda971de18"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":1151,"error":null,"http_status":200,"id":2567,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":31,"source_id":"page:3ac804b364"}
+{"at":"2026-11-14T11:54:04Z","duration_ms":158,"error":null,"http_status":null,"id":2568,"new_postings":0,"outcome":"empty","postings":0,"run_id":31,"source_id":"greenhouse:eqtpartners"}
