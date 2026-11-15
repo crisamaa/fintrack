@@ -10,6 +10,7 @@
 {"evidence":"It is not open to MBA students.","kind":"other","method":"ai","opportunity_id":"0086928e16b2f786","recorded_at":"2026-11-05T07:37:47Z","value":"{\"summary\":\"Not open to MBA students\"}"}
 {"evidence":"with a starting date in March 2027","kind":"start","method":"ai","opportunity_id":"0086928e16b2f786","recorded_at":"2026-11-05T07:37:47Z","value":"{\"summary\":\"Starting date in March 2027\"}"}
 {"evidence":"This is a 6-month Valuation internship position in Paris starting in January 2027.","kind":"duration_months","method":"ai","opportunity_id":"00cb931e696fddd2","recorded_at":"2026-11-08T06:52:53Z","value":"{\"max\":6,\"min\":6}"}
+{"evidence":"starting in January 2027","kind":"start","method":"ai","opportunity_id":"00cb931e696fddd2","recorded_at":"2026-11-15T00:36:11Z","value":"{\"summary\":\"Starts January 2027\"}"}
 {"evidence":"starting in January 2027","kind":"start","method":"ai","opportunity_id":"00cb931e696fddd2","recorded_at":"2026-11-10T22:06:59Z","value":"{\"summary\":\"Starts in January 2027\"}"}
 {"evidence":"Full-fluency in Italian (C1-C2) and English (B2+);","kind":"language","method":"rule","opportunity_id":"016c6addc6d979bd","recorded_at":"2026-11-04T23:20:12Z","value":"{\"code\":\"en\"}"}
 {"evidence":"Full-fluency in Italian (C1-C2) and English (B2+);","kind":"language","method":"rule","opportunity_id":"016c6addc6d979bd","recorded_at":"2026-11-04T23:20:12Z","value":"{\"code\":\"it\"}"}
