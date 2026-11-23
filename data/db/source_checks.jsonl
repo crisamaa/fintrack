@@ -4472,3 +4472,96 @@
 {"at":"2026-11-22T22:16:23Z","duration_ms":1091,"error":"rate_limited: GET https://pjtpartners.wd1.myworkdayjobs.com/wday/cxs/pjtpartners/Careers/jobs: HTTP 429","http_status":429,"id":4472,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":54,"source_id":"workday:pjtpartners/Careers"}
 {"at":"2026-11-22T22:16:23Z","duration_ms":3057,"error":null,"http_status":200,"id":4473,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":54,"source_id":"page:2bbde4cece"}
 {"at":"2026-11-22T22:16:23Z","duration_ms":2295,"error":null,"http_status":200,"id":4474,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":54,"source_id":"page:d791aaad55"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2294,"error":null,"http_status":200,"id":4475,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:75720760c4"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1820,"error":null,"http_status":200,"id":4476,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:96b55bc0aa"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1542,"error":null,"http_status":304,"id":4477,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:ec811dc7f6"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1688,"error":null,"http_status":200,"id":4478,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:3a5b266700"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2696,"error":null,"http_status":200,"id":4479,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:b0ae42f5fa"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1662,"error":null,"http_status":200,"id":4480,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:2552ae4a71"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2319,"error":null,"http_status":200,"id":4481,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:28f1b6ed21"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2962,"error":null,"http_status":200,"id":4482,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:24d55f7e8c"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2818,"error":null,"http_status":200,"id":4483,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:d4ec675c35"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2812,"error":null,"http_status":200,"id":4484,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:bc7eea67bb"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1658,"error":null,"http_status":304,"id":4485,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:20874ec338"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2145,"error":null,"http_status":200,"id":4486,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:bdfb49fc0d"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":3187,"error":null,"http_status":200,"id":4487,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:953ea8c9d8"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1231,"error":"rate_limited: GET https://blackstone.wd1.myworkdayjobs.com/wday/cxs/blackstone/Blackstone_Careers/jobs: HTTP 429","http_status":429,"id":4488,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":55,"source_id":"workday:blackstone/Blackstone_Careers"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2202,"error":null,"http_status":200,"id":4489,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:388e019da9"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1147,"error":"rate_limited: GET https://ntrs.wd1.myworkdayjobs.com/wday/cxs/ntrs/northerntrust/jobs: HTTP 429","http_status":429,"id":4490,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":55,"source_id":"workday:ntrs/northerntrust"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1236,"error":null,"http_status":null,"id":4491,"new_postings":0,"outcome":"ok","postings":5,"run_id":55,"source_id":"ashby:alan"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1879,"error":null,"http_status":200,"id":4492,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:958b335f60"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1858,"error":null,"http_status":200,"id":4493,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:ea4a80da37"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1483,"error":null,"http_status":200,"id":4494,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:a593fa26f4"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1949,"error":null,"http_status":200,"id":4495,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:bb0aff0e3a"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":99,"error":null,"http_status":null,"id":4496,"new_postings":0,"outcome":"empty","postings":0,"run_id":55,"source_id":"ashby:trustly"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1607,"error":null,"http_status":304,"id":4497,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:78180e9cc5"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1145,"error":"rate_limited: GET https://hl.wd1.myworkdayjobs.com/wday/cxs/hl/Campus/jobs: HTTP 429","http_status":429,"id":4498,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":55,"source_id":"workday:hl/Campus"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1674,"error":null,"http_status":200,"id":4499,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:c652e85471"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2323,"error":null,"http_status":200,"id":4500,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:f3c6b82d1e"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1636,"error":null,"http_status":200,"id":4501,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:3a4e57e8d1"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1234,"error":null,"http_status":null,"id":4502,"new_postings":0,"outcome":"ok","postings":2,"run_id":55,"source_id":"greenhouse:raisin"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1762,"error":null,"http_status":200,"id":4503,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:cf6b5bcbf5"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":41,"error":null,"http_status":null,"id":4504,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"ashby:wayflyer"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1076,"error":null,"http_status":null,"id":4505,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"ashby:qonto"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":74,"error":null,"http_status":null,"id":4506,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"greenhouse:scalapaysrl"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1915,"error":null,"http_status":200,"id":4507,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:34ff63914d"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2653,"error":null,"http_status":200,"id":4508,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:e045b46549"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":110,"error":null,"http_status":null,"id":4509,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"ashby:billie"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":14316,"error":"pagination: workday:santander/SantanderCareers: page 7 failed (rate_limited: GET https://santander.wd3.myworkdayjobs.com/wday/cxs/santander/SantanderCareers/jobs: HTTP 429)","http_status":null,"id":4510,"new_postings":null,"outcome":"pagination","postings":null,"run_id":55,"source_id":"workday:santander/SantanderCareers"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":174,"error":null,"http_status":null,"id":4511,"new_postings":0,"outcome":"ok","postings":3,"run_id":55,"source_id":"greenhouse:flowtraders"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":52,"error":"rate_limited: GET https://hl.wd1.myworkdayjobs.com/wday/cxs/hl/Corporate/jobs: HTTP 429","http_status":429,"id":4512,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":55,"source_id":"workday:hl/Corporate"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":101,"error":null,"http_status":null,"id":4513,"new_postings":0,"outcome":"ok","postings":7,"run_id":55,"source_id":"ashby:upvest"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":917,"error":null,"http_status":null,"id":4514,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"greenhouse:moonfare"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1190,"error":null,"http_status":null,"id":4515,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"greenhouse:sumup"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1041,"error":null,"http_status":null,"id":4516,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"greenhouse:feedzai"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1189,"error":null,"http_status":null,"id":4517,"new_postings":0,"outcome":"ok","postings":7,"run_id":55,"source_id":"greenhouse:lincolninternational"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1876,"error":null,"http_status":null,"id":4518,"new_postings":0,"outcome":"ok","postings":3,"run_id":55,"source_id":"personio:auxmoney-gmbh@de"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":99,"error":null,"http_status":null,"id":4519,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"ashby:mollie"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":111,"error":null,"http_status":null,"id":4520,"new_postings":0,"outcome":"ok","postings":9,"run_id":55,"source_id":"greenhouse:stepstone"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1825,"error":null,"http_status":null,"id":4521,"new_postings":0,"outcome":"ok","postings":1,"run_id":55,"source_id":"personio:flossbach-von-storch-ag@de"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":89,"error":null,"http_status":null,"id":4522,"new_postings":0,"outcome":"ok","postings":3,"run_id":55,"source_id":"greenhouse:bitpanda"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":60,"error":null,"http_status":null,"id":4523,"new_postings":0,"outcome":"ok","postings":2,"run_id":55,"source_id":"ashby:ledger"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2054,"error":null,"http_status":null,"id":4524,"new_postings":0,"outcome":"empty","postings":0,"run_id":55,"source_id":"workday:gam/GAM"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1185,"error":"rate_limited: GET https://harbourvest.wd5.myworkdayjobs.com/wday/cxs/harbourvest/HVP/jobs: HTTP 429","http_status":429,"id":4525,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":55,"source_id":"workday:harbourvest/HVP"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1188,"error":null,"http_status":304,"id":4526,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:ca8ba8fe44"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2327,"error":null,"http_status":200,"id":4527,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:3ad26f4a65"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2791,"error":null,"http_status":304,"id":4528,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:2d15f7666b"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2317,"error":null,"http_status":200,"id":4529,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:7611a397e5"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":14739,"error":null,"http_status":200,"id":4530,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:a45788efe6"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":3433,"error":null,"http_status":200,"id":4531,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:82c120f279"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1511,"error":null,"http_status":304,"id":4532,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:8ffec26d16"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1526,"error":null,"http_status":200,"id":4533,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:c9e214cef3"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2300,"error":null,"http_status":200,"id":4534,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:ca5613f1c6"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":94,"error":null,"http_status":null,"id":4535,"new_postings":0,"outcome":"empty","postings":0,"run_id":55,"source_id":"ashby:pliant"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1739,"error":null,"http_status":null,"id":4536,"new_postings":0,"outcome":"empty","postings":0,"run_id":55,"source_id":"personio:yapeal-ag@de"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1681,"error":null,"http_status":200,"id":4537,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:eac7150191"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1795,"error":null,"http_status":200,"id":4538,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:bed9cc6bcd"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1666,"error":null,"http_status":304,"id":4539,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:dad1f85ebd"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1355,"error":null,"http_status":200,"id":4540,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:0e53f54aa2"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2025,"error":"rate_limited: GET https://bbva.wd3.myworkdayjobs.com/wday/cxs/bbva/es/jobs: HTTP 429","http_status":429,"id":4541,"new_postings":null,"outcome":"rate_limited","postings":null,"run_id":55,"source_id":"workday:bbva/es"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2609,"error":null,"http_status":200,"id":4542,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:c6a3060927"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":3281,"error":null,"http_status":304,"id":4543,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:f382e2a1ee"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1880,"error":null,"http_status":200,"id":4544,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:2a13a0622b"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":3239,"error":null,"http_status":200,"id":4545,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:2620893d2c"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1275,"error":null,"http_status":200,"id":4546,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:6f7e7921e1"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1985,"error":null,"http_status":200,"id":4547,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:70ae3f1394"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2187,"error":null,"http_status":200,"id":4548,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:9ff7ed8417"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2653,"error":null,"http_status":200,"id":4549,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:4b5d2f1583"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2390,"error":null,"http_status":200,"id":4550,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:4fdffe6ffc"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2070,"error":null,"http_status":200,"id":4551,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:bee3e5c86a"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2533,"error":null,"http_status":200,"id":4552,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:9daf6b915e"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1658,"error":null,"http_status":200,"id":4553,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:d97a7dbd3c"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1613,"error":null,"http_status":304,"id":4554,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:c663d6c45b"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1902,"error":null,"http_status":200,"id":4555,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:c51353f8fd"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2226,"error":null,"http_status":200,"id":4556,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:7ae2a613ea"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2139,"error":null,"http_status":200,"id":4557,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:e0138777d1"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2144,"error":null,"http_status":200,"id":4558,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:4a3a737d5e"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2392,"error":null,"http_status":200,"id":4559,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:329810b604"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1323,"error":null,"http_status":200,"id":4560,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:873a52d348"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2133,"error":null,"http_status":200,"id":4561,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:04c8f069b0"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2468,"error":null,"http_status":200,"id":4562,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:19ce2a3c85"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2396,"error":null,"http_status":200,"id":4563,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:d1fccba902"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":2091,"error":null,"http_status":200,"id":4564,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:f62803514d"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1707,"error":null,"http_status":200,"id":4565,"new_postings":null,"outcome":"deferred","postings":null,"run_id":55,"source_id":"page:faee45af28"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1794,"error":null,"http_status":200,"id":4566,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:86e10f964e"}
+{"at":"2026-11-23T08:29:28Z","duration_ms":1972,"error":null,"http_status":200,"id":4567,"new_postings":null,"outcome":"not_modified","postings":null,"run_id":55,"source_id":"page:c2e2495e50"}
